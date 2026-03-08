@@ -343,7 +343,7 @@ export default function MobileFundTable({
       setShowPortalHeader(tableRect.top <= nextStickyTop);
     };
 
-    const throttledVerticalUpdate = throttle(updateVerticalState, 50, { leading: true, trailing: true });
+    const throttledVerticalUpdate = throttle(updateVerticalState, 1000/60, { leading: true, trailing: true });
 
     updateVerticalState();
     window.addEventListener('scroll', throttledVerticalUpdate, { passive: true });
