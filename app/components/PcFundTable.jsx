@@ -1167,22 +1167,13 @@ export default function PcFundTable({
       >
         <DialogContent
           className="sm:max-w-2xl max-h-[88vh] flex flex-col p-0 overflow-hidden"
-          showCloseButton={false}
+          showCloseButton={true}
           onPointerDownOutside={blockDialogClose ? (e) => e.preventDefault() : undefined}
         >
           <DialogHeader className="flex-shrink-0 flex flex-row items-center justify-between gap-2 space-y-0 px-6 pb-4 pt-6 text-left border-b border-[var(--border)]">
             <DialogTitle className="text-base font-semibold text-[var(--text)]">
               基金详情
             </DialogTitle>
-            <button
-              type="button"
-              className="icon-button rounded-lg"
-              aria-label="关闭"
-              onClick={() => setCardDialogRow(null)}
-              style={{ padding: 4, borderColor: 'transparent' }}
-            >
-              <CloseIcon width="20" height="20" />
-            </button>
           </DialogHeader>
           <div
             className="flex-1 min-h-0 overflow-y-auto px-6 py-4"

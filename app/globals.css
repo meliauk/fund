@@ -2076,6 +2076,21 @@ input[type="number"] {
   box-shadow: 0 4px 24px rgba(15, 23, 42, 0.12);
 }
 
+/* Drawer 内容玻璃拟态：与 Dialog 统一的毛玻璃效果（更通透） */
+.drawer-content-theme {
+  background: rgba(15, 23, 42, 0);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-color: rgba(148, 163, 184, 0.45);
+}
+
+[data-theme="light"] .drawer-content-theme {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-color: rgba(148, 163, 184, 0.6);
+}
+
 /* shadcn Dialog：符合项目规范(ui-ux-pro-max)，适配亮/暗主题，略微玻璃拟态 */
 [data-slot="dialog-content"] {
   backdrop-filter: blur(8px);

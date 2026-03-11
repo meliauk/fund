@@ -70,7 +70,7 @@ export default function FundCard({
     boxShadow: 'none',
     paddingLeft: 0,
     paddingRight: 0,
-    background: 'transparent',
+    background: 'none',
   } : {};
 
   return (
@@ -91,6 +91,7 @@ export default function FundCard({
                 e.stopPropagation();
                 onRemoveFromGroup?.(f.code);
               }}
+              style={{backgroundColor: 'transparent'}}
               title="从当前分组移除"
             >
               <ExitIcon width="18" height="18" style={{ transform: 'rotate(180deg)' }} />
