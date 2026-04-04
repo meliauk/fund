@@ -1,12 +1,14 @@
 'use client';
 
 import Image from 'next/image';
+import { useCallback, useLayoutEffect, useRef } from 'react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { MailIcon } from './Icons';
 import githubImg from "../assets/github.svg";
 
 export default function LoginModal({
   onClose,
+  isMobile,
   loginEmail,
   setLoginEmail,
   loginOtp,
@@ -18,6 +20,37 @@ export default function LoginModal({
   handleVerifyEmailOtp,
   handleGithubLogin
 }) {
+  const loginModalCardRef = useRef(null);
+  const otpTouchWrapRef = useRef(null);
+
+  // iOS 等系统仅在「用户手势」触发的 focus 上弹出软键盘；触摸验证码区域时同步 focus 可稳定唤起键盘
+  const focusOtpInput = useCallback(() => {
+    const wrap = otpTouchWrapRef.current;
+    if (!wrap) return;
+    const root = wrap.querySelector('[data-input-otp-container]');
+    const input = root?.querySelector('[data-input-otp]');
+    if (!(input instanceof HTMLInputElement) || input.disabled) return;
+    root.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    input.focus();
+    try {
+      input.click();
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  // 发送成功后尝试自动聚焦；若系统仍不弹键盘，用户轻点验证码区会由 onPointerDownCapture 再 focus
+  useLayoutEffect(() => {
+    if (!loginSuccess || !isMobile) return;
+    const run = () => focusOtpInput();
+    run();
+    const t = requestAnimationFrame(run);
+    const t2 = window.setTimeout(run, 50);
+    return () => {
+      cancelAnimationFrame(t);
+      window.clearTimeout(t2);
+    };
+  }, [loginSuccess, isMobile, focusOtpInput]);
   return (
     <div
       className="modal-overlay"
@@ -26,7 +59,11 @@ export default function LoginModal({
       aria-label="登录"
       onClick={onClose}
     >
-      <div className="glass card modal login-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={loginModalCardRef}
+        className="glass card modal login-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="title" style={{ marginBottom: 16 }}>
           <MailIcon width="20" height="20" />
           <span>邮箱登录</span>
@@ -56,7 +93,14 @@ export default function LoginModal({
           )}
 
           {loginSuccess && (
-            <div className="form-group" style={{ marginBottom: 16 }}>
+            <div
+              ref={otpTouchWrapRef}
+              className="form-group"
+              style={{ marginBottom: 16, touchAction: 'manipulation' }}
+              onPointerDownCapture={
+                isMobile ? () => focusOtpInput() : undefined
+              }
+            >
               <div className="muted" style={{ marginBottom: 8, fontSize: '0.8rem' }}>
                 请输入邮箱验证码以完成注册/登录
               </div>
@@ -65,6 +109,10 @@ export default function LoginModal({
                 value={loginOtp}
                 onChange={(value) => setLoginOtp(value)}
                 disabled={loginLoading}
+                autoFocus={!!isMobile}
+                autoComplete="one-time-code"
+                type={isMobile ? 'tel' : 'text'}
+                enterKeyHint="done"
               >
                 <InputOTPGroup>
                   <InputOTPSlot index={0} />

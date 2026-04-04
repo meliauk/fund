@@ -5274,6 +5274,7 @@ export default function HomePage() {
             setLoginOtp('');
             setLoginLoading(false);
           }}
+          isMobile={isMobile}
           loginEmail={loginEmail}
           setLoginEmail={setLoginEmail}
           loginOtp={loginOtp}
