@@ -154,6 +154,7 @@ function SortableRow({ row, children, isTableDragging, disabled }) {
 export default function PcFundTable({
   data = [],
   onRemoveFund,
+  onRemoveFunds,
   currentTab,
   favorites = new Set(),
   onToggleFavorite,
@@ -207,6 +208,51 @@ export default function PcFundTable({
     setActiveId(null);
   };
   const groupKey = currentTab ?? 'all';
+
+  const isGroupTab = currentTab && currentTab !== 'all' && currentTab !== 'fav';
+  const batchRemoveEnabled = isGroupTab && sortBy === 'default';
+  const selectableCodes = useMemo(
+    () => (Array.isArray(data) ? data.map((d) => d?.code).filter(Boolean) : []),
+    [data],
+  );
+  const [selectedCodes, setSelectedCodes] = useState(() => new Set());
+
+  useEffect(() => {
+    setSelectedCodes(new Set());
+  }, [currentTab]);
+
+  useEffect(() => {
+    setSelectedCodes((prev) => {
+      if (!prev?.size) return prev;
+      const allowed = new Set(selectableCodes);
+      let changed = false;
+      const next = new Set();
+      for (const c of prev) {
+        if (allowed.has(c)) next.add(c);
+        else changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [selectableCodes]);
+
+  const toggleSelected = useCallback((code, checked) => {
+    if (!code) return;
+    setSelectedCodes((prev) => {
+      const next = new Set(prev || []);
+      if (checked) next.add(code);
+      else next.delete(code);
+      return next;
+    });
+  }, []);
+
+  const setAllSelected = useCallback((checked) => {
+    setSelectedCodes(() => {
+      if (!checked) return new Set();
+      return new Set(selectableCodes);
+    });
+  }, [selectableCodes]);
+
+  const selectedCount = selectedCodes?.size || 0;
 
   const getCustomSettingsWithMigration = () => {
     if (typeof window === 'undefined') return {};
@@ -658,7 +704,6 @@ export default function PcFundTable({
     const isUpdated = original.isUpdated;
     const hasDca = original.hasDca;
     const isFavorites = favorites?.has?.(code);
-    const isGroupTab = currentTab && currentTab !== 'all' && currentTab !== 'fav';
     const rowContext = useContext(SortableRowContext);
 
     return (
@@ -674,6 +719,35 @@ export default function PcFundTable({
           >
             <DragIcon width="16" height="16" />
           </button>
+        )}
+        {batchRemoveEnabled && (
+          <label
+            title="选择用于批量删除"
+            onClick={(e) => e.stopPropagation?.()}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 18,
+              height: 18,
+              flexShrink: 0,
+              cursor: 'pointer',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={selectedCodes?.has?.(code) || false}
+              onChange={(e) => toggleSelected(code, e.target.checked)}
+              onClick={(e) => e.stopPropagation?.()}
+              style={{
+                width: 14,
+                height: 14,
+                accentColor: 'var(--primary)',
+                cursor: 'pointer',
+              }}
+              aria-label="选择基金"
+            />
+          </label>
         )}
         {!isGroupTab ? (
           <button
@@ -716,7 +790,29 @@ export default function PcFundTable({
     () => [
       {
         accessorKey: 'fundName',
-        header: '基金名称',
+        header: () => {
+          if (!batchRemoveEnabled) return '基金名称';
+          const allCount = selectableCodes.length;
+          const checked = allCount > 0 && selectedCount === allCount;
+          const indeterminate = selectedCount > 0 && selectedCount < allCount;
+          return (
+            <BatchRemoveHeader
+              checked={checked}
+              indeterminate={indeterminate}
+              selectedCount={selectedCount}
+              totalCount={allCount}
+              onToggleAll={(nextChecked) => setAllSelected(nextChecked)}
+              onClear={() => setSelectedCodes(new Set())}
+              onRemove={() => {
+                if (!onRemoveFunds || selectedCount === 0) return;
+                const codes = Array.from(selectedCodes);
+                onRemoveFunds(codes);
+                setSelectedCodes(new Set());
+              }}
+              disabled={refreshing || selectedCount === 0}
+            />
+          );
+        },
         size: 265,
         minSize: 140,
         enablePinning: true,
@@ -1296,7 +1392,25 @@ export default function PcFundTable({
         },
       },
     ],
-    [currentTab, favorites, refreshing, sortBy, showFullFundName, getFundCardProps, masked, relatedSectorByCode, sectorQuoteByLabel, periodReturnsByCode],
+    [
+      currentTab,
+      favorites,
+      refreshing,
+      sortBy,
+      showFullFundName,
+      getFundCardProps,
+      masked,
+      relatedSectorByCode,
+      sectorQuoteByLabel,
+      periodReturnsByCode,
+      batchRemoveEnabled,
+      selectableCodes.length,
+      selectedCount,
+      selectedCodes,
+      onRemoveFunds,
+      setAllSelected,
+      toggleSelected,
+    ],
   );
 
   const table = useReactTable({
@@ -1673,4 +1787,79 @@ function FundDetailDialog({ blockDialogClose, cardDialogRow, getFundCardProps, s
       </DialogContent>
     </Dialog>
   )
+}
+
+function BatchRemoveHeader({
+  checked,
+  indeterminate,
+  selectedCount,
+  totalCount,
+  onToggleAll,
+  onRemove,
+  onClear,
+  disabled,
+}) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = !!indeterminate;
+  }, [indeterminate]);
+
+  return (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, width: '100%', justifyContent: 'space-between' }}>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+        <label
+          title={checked ? '取消全选' : '全选'}
+          onClick={(e) => e.stopPropagation?.()}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+        >
+          <input
+            ref={ref}
+            type="checkbox"
+            checked={!!checked}
+            onChange={(e) => onToggleAll?.(e.target.checked)}
+            onClick={(e) => e.stopPropagation?.()}
+            style={{ width: 14, height: 14, accentColor: 'var(--primary)', cursor: 'pointer' }}
+            aria-label="全选"
+          />
+          <span className="muted" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+            已选 {selectedCount}/{totalCount}
+          </span>
+        </label>
+        {selectedCount > 0 && (
+          <button
+            className="link-button"
+            onClick={(e) => { e.stopPropagation?.(); onClear?.(); }}
+            style={{ fontSize: 12, opacity: 0.9 }}
+            type="button"
+          >
+            清空
+          </button>
+        )}
+      </div>
+
+      <button
+        className="icon-button"
+        onClick={(e) => { e.stopPropagation?.(); onRemove?.(); }}
+        title="批量删除"
+        disabled={!!disabled}
+        type="button"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '0 10px',
+          height: 28,
+          width: 'auto',
+          opacity: disabled ? 0.6 : 1,
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          backgroundColor: 'transparent',
+          border: 'none',
+          color: 'var(--danger)'
+        }}
+      >
+        <TrashIcon width="14" height="14" />
+        <span style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>批量删除</span>
+      </button>
+    </div>
+  );
 }

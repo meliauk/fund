@@ -560,6 +560,7 @@ export default function HomePage() {
   const [isTradingDay, setIsTradingDay] = useState(true); // 默认为交易日，通过接口校正
   const tabsRef = useRef(null);
   const [fundDeleteConfirm, setFundDeleteConfirm] = useState(null); // { code, name }
+  const [fundDeleteBulkConfirm, setFundDeleteBulkConfirm] = useState(null); // { codes: string[], groupId: string, count: number }
   const fundDetailDrawerCloseRef = useRef(null); // 由 MobileFundTable 注入，用于确认删除时关闭基金详情 Drawer
   const fundDetailDialogCloseRef = useRef(null); // 由 PcFundTable 注入，用于确认删除时关闭基金详情 Dialog
 
@@ -3531,6 +3532,36 @@ export default function HomePage() {
     }
   };
 
+  const requestRemoveFundsFromCurrentGroup = (codes) => {
+    const gid =
+      currentTab !== 'all' && currentTab !== 'fav' && groups.some((g) => g.id === currentTab)
+        ? currentTab
+        : null;
+    const list = Array.from(new Set((codes || []).filter(Boolean)));
+    if (!gid || list.length === 0) return;
+
+    const scoped = migrateDcaPlansToScoped(dcaPlans);
+    const needsConfirm = list.some((code) => {
+      const gh = groupHoldings[gid]?.[code];
+      const hasGroupHolding = gh && isNumber(gh.share) && gh.share > 0;
+      const hasGroupPending = pendingTrades.some((t) => t.fundCode === code && t.groupId === gid);
+      const hasGroupDca = !!(scoped[gid]?.[code]);
+      const txList = transactions[code] || [];
+      const hasGroupTx = txList.some((t) => t.groupId === gid);
+      return hasGroupHolding || hasGroupPending || hasGroupDca || hasGroupTx;
+    });
+
+    if (needsConfirm) {
+      setFundDeleteBulkConfirm({ codes: list, groupId: gid, count: list.length });
+      return;
+    }
+
+    fundDetailDrawerCloseRef.current?.();
+    fundDetailDialogCloseRef.current?.();
+    stripManyFundsFromGroupScope(list, gid);
+    showToast(`已从当前分组移除 ${list.length} 支基金`, 'success');
+  };
+
   const addFund = async (e) => {
     e?.preventDefault?.();
     setError('');
@@ -4959,6 +4990,7 @@ export default function HomePage() {
       !!clearConfirm ||
       donateOpen ||
       !!fundDeleteConfirm ||
+      !!fundDeleteBulkConfirm ||
       updateModalOpen ||
       weChatOpen ||
       scanModalOpen ||
@@ -5698,6 +5730,7 @@ export default function HomePage() {
                                   if (!row || !row.code) return;
                                   requestRemoveFund({ code: row.code, name: row.fundName });
                                 }}
+                                onRemoveFunds={(codes) => requestRemoveFundsFromCurrentGroup(codes)}
                                 onToggleFavorite={(row) => {
                                   if (!row || !row.code) return;
                                   toggleFavorite(row.code);
@@ -5718,7 +5751,7 @@ export default function HomePage() {
                                 }}
                                 onCustomSettingsChange={triggerCustomSettingsSync}
                                 closeDialogRef={fundDetailDialogCloseRef}
-                                blockDialogClose={!!fundDeleteConfirm}
+                                blockDialogClose={!!fundDeleteConfirm || !!fundDeleteBulkConfirm}
                                 masked={maskAmounts}
                                 getFundCardProps={(row) => {
                                   const fund = row?.rawFund || (row ? { code: row.code, name: row.fundName } : null);
@@ -5771,7 +5804,7 @@ export default function HomePage() {
                         favorites={favorites}
                         sortBy={sortBy}
                         stickyTop={navbarHeight + filterBarHeight + marketIndexAccordionHeight}
-                        blockDrawerClose={!!fundDeleteConfirm}
+                        blockDrawerClose={!!fundDeleteConfirm || !!fundDeleteBulkConfirm}
                         closeDrawerRef={fundDetailDrawerCloseRef}
                         onReorder={handleReorder}
                         onRemoveFund={(row) => {
@@ -5937,6 +5970,24 @@ export default function HomePage() {
               setFundDeleteConfirm(null);
             }}
             onCancel={() => setFundDeleteConfirm(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {fundDeleteBulkConfirm && (
+          <ConfirmModal
+            title="批量删除确认"
+            message={`确定从当前分组中移除已选的 ${fundDeleteBulkConfirm.count} 支基金吗？将清除这些基金在该分组内的持仓、待定交易、定投计划与分组内交易记录；不会在「全部」中删除这些基金。`}
+            confirmText="确定删除"
+            onConfirm={() => {
+              fundDetailDrawerCloseRef.current?.();
+              fundDetailDialogCloseRef.current?.();
+              stripManyFundsFromGroupScope(fundDeleteBulkConfirm.codes, fundDeleteBulkConfirm.groupId);
+              showToast(`已从当前分组移除 ${fundDeleteBulkConfirm.count} 支基金`, 'success');
+              setFundDeleteBulkConfirm(null);
+            }}
+            onCancel={() => setFundDeleteBulkConfirm(null)}
           />
         )}
       </AnimatePresence>
