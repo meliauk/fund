@@ -5944,11 +5944,7 @@ export default function HomePage() {
           onLogin={handleOpenLogin}
           onMyEarnings={() => setPortfolioEarningsOpen(true)}
           onTutorial={() =>
-            window.open(
-              'https://github.com/hzm0321/real-time-fund/blob/main/README.md',
-              '_blank',
-              'noopener,noreferrer'
-            )
+            sonnerToast.info('敬请期待~')
           }
           onFeedback={() => {
             if (!user?.id) {
