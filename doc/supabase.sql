@@ -87,7 +87,7 @@ create table public.fund_secid (
 ALTER TABLE fund_secid ENABLE ROW LEVEL SECURITY;
 
 -- 2. 仅允许已登录用户查询
-CREATE POLICY "Allow authenticated users to select fund_related"
+CREATE POLICY "Allow authenticated users to select fund_secid"
 ON fund_secid
 FOR SELECT
 TO authenticated
