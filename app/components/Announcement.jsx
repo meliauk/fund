@@ -79,6 +79,9 @@ export default function Announcement() {
               <p>1. 🎉服务器已扩容，现已提升账号同步频率，支持更高频率的单账号多设备同步。</p>
               <p>2. 重构日期选择组件。</p>
               <p>3. 优化我的收益日期组件展示。</p>
+              <p>4. 修复清空持仓未清空定投问题。</p>
+              <p>5. 修复指数刷新问题。</p>
+              <p>6. 修复导入导出数据问题。</p>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
