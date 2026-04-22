@@ -1050,7 +1050,12 @@ export default function PcFundTable({
           const original = info.row.original || {};
           const code = original.code;
           const value = (code && (relatedSectorByCode?.[code] ?? relatedSectorCacheRef.current.get(code))) || '';
-          const display = value || '—';
+          // 关联板块为空时，显示基金标签
+          const fundTags = Array.isArray(original.fundTags) ? original.fundTags : [];
+          const tagsText = fundTags.length > 0 
+            ? fundTags.map(t => t && typeof t === 'object' && t.name != null ? String(t.name).trim() : String(t).trim()).filter(Boolean).join(', ')
+            : '';
+          const display = value || tagsText || '—';
           const labelKey = value ? String(value).trim() : '';
           const quote = labelKey ? sectorQuoteByLabel?.[labelKey] : null;
           const nameFromQuote = quote?.name != null ? String(quote.name).trim() : '';
