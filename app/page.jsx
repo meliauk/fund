@@ -8489,7 +8489,10 @@ export default function HomePage() {
           <UpdatePromptModal
             open={updateModalOpen}
             updateContent={updateContent}
-            onClose={() => setUpdateModalOpen(false)}
+            onClose={() => {
+              setUpdateModalOpen(false);
+              setHasUpdate(false);
+            }}
             onRefresh={() => window.location.reload()}
           />
         )}
