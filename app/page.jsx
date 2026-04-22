@@ -7053,7 +7053,7 @@ export default function HomePage() {
         aria-hidden={!mobileHomeTabVisible || undefined}
       >
       <>
-      <Announcement />
+      {/*<Announcement />*/}
       <div className="navbar glass" ref={navbarRef}>
         {refreshing && <div className="loading-bar"></div>}
         <div className={`brand ${(isSearchFocused || selectedFunds.length > 0) ? 'search-focused-sibling' : ''}`}>
