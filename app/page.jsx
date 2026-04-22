@@ -836,8 +836,11 @@ export default function HomePage() {
   const [hasUpdate, setHasUpdate] = useState(false);
   const [latestVersion, setLatestVersion] = useState('');
   const [updateContent, setUpdateContent] = useState('');
-  // 用户忽略的更新版本，关闭弹窗后不再显示
-  const [ignoredVersion, setIgnoredVersion] = useState('');
+  // 用户忽略的更新版本，关闭弹窗后不再显示（从 localStorage 读取）
+  const [ignoredVersion, setIgnoredVersion] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    return localStorage.getItem('ignoredUpdateVersion') || '';
+  });
   const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
@@ -8495,6 +8498,7 @@ export default function HomePage() {
               setUpdateModalOpen(false);
               setHasUpdate(false);
               setIgnoredVersion(latestVersion);
+              localStorage.setItem('ignoredUpdateVersion', latestVersion);
             }}
             onRefresh={() => window.location.reload()}
           />
