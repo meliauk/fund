@@ -4100,7 +4100,26 @@ export default function HomePage() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    // 定期刷新 session（每30分钟），避免 token 过期
+    const refreshInterval = setInterval(async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // 如果 session 即将过期（小于1小时），尝试刷新
+        const expiresAt = session.expires_at;
+        const now = Math.floor(Date.now() / 1000);
+        if (expiresAt && expiresAt - now < 3600) {
+          const { error } = await supabase.auth.refreshSession();
+          if (error) {
+            console.log('Session refresh failed:', error.message);
+          }
+        }
+      }
+    }, 30 * 60 * 1000); // 30分钟
+
+    return () => {
+      subscription.unsubscribe();
+      clearInterval(refreshInterval);
+    };
   }, []);
 
   // 实时同步

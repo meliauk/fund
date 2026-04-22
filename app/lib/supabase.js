@@ -50,6 +50,13 @@ export const supabase = isSupabaseConfigured ? createClient(supabaseUrl, supabas
         // 持久化 session 到 localStorage
         persistSession: true,
         // 检测 URL 中的 session（用于邮箱验证回调）
-        detectSessionInUrl: true
+        detectSessionInUrl: true,
+        // 使用自定义存储键，避免与其他应用冲突
+        storageKey: 'fund_supabase_auth_token',
+        // 增加存储检查间隔（毫秒）
+        storageOptions: {
+            // 每次检查 session 的间隔
+            checkInterval: 60000 // 60秒
+        }
     }
 }) : createNoopSupabase();
