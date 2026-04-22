@@ -8500,7 +8500,10 @@ export default function HomePage() {
               setIgnoredVersion(latestVersion);
               localStorage.setItem('ignoredUpdateVersion', latestVersion);
             }}
-            onRefresh={() => window.location.reload()}
+            onRefresh={() => {
+              localStorage.setItem('ignoredUpdateVersion', latestVersion);
+              window.location.reload();
+            }}
           />
         )}
       </AnimatePresence>
