@@ -300,7 +300,7 @@ export default function GroupSummary({
             <div
               style={{
                 fontSize: '24px',
-                fontWeight: 700,
+                fontWeight: 500,
                 fontFamily: 'var(--font-mono)',
               }}
             >
@@ -345,7 +345,7 @@ export default function GroupSummary({
                 }
                 style={{
                   fontSize: '18px',
-                  fontWeight: 700,
+                  fontWeight: 500,
                   fontFamily: 'var(--font-mono)',
                   cursor: summary.hasAnyTodayData ? 'pointer' : 'default',
                 }}
@@ -408,7 +408,7 @@ export default function GroupSummary({
                 }
                 style={{
                   fontSize: '18px',
-                  fontWeight: 700,
+                  fontWeight: 500,
                   fontFamily: 'var(--font-mono)',
                   cursor: 'pointer',
                 }}

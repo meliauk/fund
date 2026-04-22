@@ -368,7 +368,7 @@ export default function TradeModal({ type, fund, holding, onClose, onConfirm, pe
                     </div>
                     <div className="row trade-confirm-divider" style={{ justifyContent: 'space-between', marginBottom: 8, paddingTop: 8 }}>
                       <span className="muted">预计回款</span>
-                      <span style={{ color: 'var(--danger)', fontWeight: 700 }}>{loadingPrice ? '计算中...' : (price ? `${estimatedReturn.toFixed(2)}` : '待计算')}</span>
+                      <span style={{ color: 'var(--danger)', fontWeight: 500 }}>{loadingPrice ? '计算中...' : (price ? `${estimatedReturn.toFixed(2)}` : '待计算')}</span>
                     </div>
                     <div className="muted" style={{ fontSize: '12px', textAlign: 'right', marginTop: 4 }}>
                       {loadingPrice ? '正在获取该日净值...' : `*基于${price === getEstimatePrice() ? '当前净值/估值' : '当日净值'}测算`}

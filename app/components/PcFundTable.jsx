@@ -124,7 +124,8 @@ function SortableRow({ row, children, isTableDragging, disabled, enableAnimation
 
   return (
     <SortableRowContext.Provider value={contextValue}>
-      {enableAnimation ? (
+      {/* 禁用动画以避免抖动问题 */}
+      {false ? (
         <motion.div
           ref={setNodeRef}
           className="table-row-wrapper"
@@ -1120,7 +1121,7 @@ export default function PcFundTable({
             : '—';
           return (
             <div style={{ textAlign: 'right' }}>
-              <FitText className={cls} style={{ fontWeight: 700 }} maxFontSize={14} minFontSize={10} as="div">
+              <FitText className={cls} style={{ fontWeight: 500 }} maxFontSize={14} minFontSize={10} as="div">
                 {text}
               </FitText>
             </div>
@@ -1143,7 +1144,7 @@ export default function PcFundTable({
             : '—';
           return (
             <div style={{ textAlign: 'right' }}>
-              <FitText className={cls} style={{ fontWeight: 700 }} maxFontSize={14} minFontSize={10} as="div">
+              <FitText className={cls} style={{ fontWeight: 500 }} maxFontSize={14} minFontSize={10} as="div">
                 {text}
               </FitText>
             </div>
@@ -1166,7 +1167,7 @@ export default function PcFundTable({
             : '—';
           return (
             <div style={{ textAlign: 'right' }}>
-              <FitText className={cls} style={{ fontWeight: 700 }} maxFontSize={14} minFontSize={10} as="div">
+              <FitText className={cls} style={{ fontWeight: 500 }} maxFontSize={14} minFontSize={10} as="div">
                 {text}
               </FitText>
             </div>
@@ -1189,7 +1190,7 @@ export default function PcFundTable({
             : '—';
           return (
             <div style={{ textAlign: 'right' }}>
-              <FitText className={cls} style={{ fontWeight: 700 }} maxFontSize={14} minFontSize={10} as="div">
+              <FitText className={cls} style={{ fontWeight: 500 }} maxFontSize={14} minFontSize={10} as="div">
                 {text}
               </FitText>
             </div>
@@ -1212,7 +1213,7 @@ export default function PcFundTable({
             : '—';
           return (
             <div style={{ textAlign: 'right' }}>
-              <FitText className={cls} style={{ fontWeight: 700 }} maxFontSize={14} minFontSize={10} as="div">
+              <FitText className={cls} style={{ fontWeight: 500 }} maxFontSize={14} minFontSize={10} as="div">
                 {text}
               </FitText>
             </div>
@@ -1231,7 +1232,7 @@ export default function PcFundTable({
           const date = typeof rawDate === 'string' && rawDate.length > 5 ? rawDate.slice(5) : rawDate;
           return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0 }}>
-              <FitText style={{ fontWeight: 700 }} maxFontSize={14} minFontSize={10} as="div">
+              <FitText style={{ fontWeight: 500 }} maxFontSize={14} minFontSize={10} as="div">
                 {info.getValue() ?? '—'}
               </FitText>
               <span className="muted" style={{ fontSize: '11px' }}>
@@ -1258,7 +1259,7 @@ export default function PcFundTable({
           const hasEstimateNav = estimateNav != null && estimateNav !== '—';
           return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0 }}>
-              <FitText style={{ fontWeight: 700 }} maxFontSize={14} minFontSize={10} as="div">
+              <FitText style={{ fontWeight: 500 }} maxFontSize={14} minFontSize={10} as="div">
                 {estimateNav ?? '—'}
               </FitText>
               {hasEstimateNav && date && date !== '-' ? (
@@ -1287,7 +1288,7 @@ export default function PcFundTable({
           const cls = value > 0 ? 'up' : value < 0 ? 'down' : '';
           return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0 }}>
-              <FitText className={cls} style={{ fontWeight: 700 }} maxFontSize={14} minFontSize={10} as="div">
+              <FitText className={cls} style={{ fontWeight: 500 }} maxFontSize={14} minFontSize={10} as="div">
                 {info.getValue() ?? '—'}
               </FitText>
               <span className="muted" style={{ fontSize: '11px' }}>
@@ -1317,7 +1318,7 @@ export default function PcFundTable({
           const hasText = text != null && text !== '—';
           return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0 }}>
-              <FitText className={cls} style={{ fontWeight: 700 }} maxFontSize={14} minFontSize={10} as="div">
+              <FitText className={cls} style={{ fontWeight: 500 }} maxFontSize={14} minFontSize={10} as="div">
                 {text ?? '—'}
               </FitText>
               {hasText && time && time !== '-' ? (
@@ -1348,7 +1349,7 @@ export default function PcFundTable({
 
           return (
             <div style={{ width: '100%' }}>
-              <FitText className={cls} style={{ fontWeight: 700, display: 'block' }} maxFontSize={14} minFontSize={10}>
+              <FitText className={cls} style={{ fontWeight: 500, display: 'block' }} maxFontSize={14} minFontSize={10}>
                 {masked && hasProfit ? <span className="mask-text">******</span> : amountStr}
               </FitText>
               {hasProfit && percentStr && !masked ? (
@@ -1425,7 +1426,7 @@ export default function PcFundTable({
               }}
             >
               <div style={{ flex: '1 1 0', minWidth: 0 }}>
-                <FitText style={{ fontWeight: 700 }} maxFontSize={14} minFontSize={10}>
+                <FitText style={{ fontWeight: 500 }} maxFontSize={14} minFontSize={10}>
                   {masked ? <span className="mask-text">******</span> : (info.getValue() ?? '—')}
                 </FitText>
               </div>
@@ -1471,7 +1472,7 @@ export default function PcFundTable({
           }
           return (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%', minWidth: 0 }}>
-              <FitText style={{ fontWeight: 700 }} maxFontSize={14} minFontSize={10}>
+              <FitText style={{ fontWeight: 500 }} maxFontSize={14} minFontSize={10}>
                 {masked ? <span className="mask-text">******</span> : (info.getValue() ?? '—')}
               </FitText>
             </div>
@@ -1493,7 +1494,7 @@ export default function PcFundTable({
             return <div className="muted" style={{ textAlign: 'right', fontSize: '12px' }}>—</div>;
           }
           return (
-              <FitText style={{ fontWeight: 700, textAlign: 'right' }} maxFontSize={14} minFontSize={10}>
+              <FitText style={{ fontWeight: 500, textAlign: 'right' }} maxFontSize={14} minFontSize={10}>
                 {masked ? <span className="mask-text">******</span> : (info.getValue() ?? '—')}
               </FitText>
           );
@@ -1515,7 +1516,7 @@ export default function PcFundTable({
             return <div className="muted" style={{ textAlign: 'right', fontSize: '12px' }}>—</div>;
           }
           return (
-            <div style={{ fontWeight: 700, textAlign: 'right' }}>
+            <div style={{ fontWeight: 500, textAlign: 'right' }}>
               {value}
             </div>
           );
@@ -1540,7 +1541,7 @@ export default function PcFundTable({
           const isUpdated = original.isUpdated;
           return (
             <div style={{ width: '100%' }}>
-              <FitText className={cls} style={{ fontWeight: 700, display: 'block' }} maxFontSize={14} minFontSize={10}>
+              <FitText className={cls} style={{ fontWeight: 500, display: 'block' }} maxFontSize={14} minFontSize={10}>
                 {masked && hasProfit ? <span className="mask-text">******</span> : amountStr}
               </FitText>
               {percentStr && !masked ? (
@@ -1576,7 +1577,7 @@ export default function PcFundTable({
             : 'muted';
           return (
             <div style={{ width: '100%' }}>
-              <FitText className={cls} style={{ fontWeight: 700, display: 'block' }} maxFontSize={14} minFontSize={10}>
+              <FitText className={cls} style={{ fontWeight: 500, display: 'block' }} maxFontSize={14} minFontSize={10}>
                 {masked && hasProfit ? <span className="mask-text">******</span> : amountStr}
               </FitText>
               {percentStr && !masked ? (
@@ -1608,7 +1609,7 @@ export default function PcFundTable({
           const percentStr = original.holdingProfitPercent ?? '';
           return (
             <div style={{ width: '100%' }}>
-              <FitText className={cls} style={{ fontWeight: 700, display: 'block' }} maxFontSize={14} minFontSize={10}>
+              <FitText className={cls} style={{ fontWeight: 500, display: 'block' }} maxFontSize={14} minFontSize={10}>
                 {masked && hasTotal ? <span className="mask-text">******</span> : amountStr}
               </FitText>
               {percentStr && !masked ? (
@@ -2030,7 +2031,8 @@ export default function PcFundTable({
               items={data.map((item) => item.code)}
               strategy={verticalListSortingStrategy}
             >
-              {enableRowAnimation ? (
+              {/* 禁用 AnimatePresence 动画以避免抖动 */}
+              {false ? (
                 <AnimatePresence mode="popLayout">
                   {tableRows.map((row, index) => (
                     <SortableRow
@@ -2329,7 +2331,7 @@ function BatchRemoveHeader({
           }}
         >
           <FolderPlusIcon width="14" height="14" />
-          <span style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>移动分组</span>
+          <span style={{ fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap' }}>移动分组</span>
         </button>
         <button
           className="icon-button"
@@ -2352,7 +2354,7 @@ function BatchRemoveHeader({
           }}
         >
           <TrashIcon width="14" height="14" />
-          <span style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>批量删除</span>
+          <span style={{ fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap' }}>批量删除</span>
         </button>
       </div>
     </div>

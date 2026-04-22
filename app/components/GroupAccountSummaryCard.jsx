@@ -179,7 +179,7 @@ export default function GroupAccountSummaryCard({
           <span style={{ display: 'flex', flexShrink: 0, lineHeight: 0 }} aria-hidden>
             <GroupCardTitleIcon size={isMobile ? 20 : 22} />
           </span>
-          <span style={{ fontWeight: 700, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{ fontWeight: 500, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {groupName}
           </span>
         </div>
@@ -200,7 +200,7 @@ export default function GroupAccountSummaryCard({
           <div className="muted" style={{ fontSize: 12, marginBottom: 2 }}>
             账户资产
           </div>
-          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+          <div style={{ fontSize: 22, fontWeight: 500, fontFamily: 'var(--font-mono)' }}>
             {masked ? (
               <span className="mask-text">******</span>
             ) : (
@@ -219,7 +219,7 @@ export default function GroupAccountSummaryCard({
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span
               className={holdingTone.className}
-              style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-mono)', color: holdingTone.color }}
+              style={{ fontSize: 16, fontWeight: 500, fontFamily: 'var(--font-mono)', color: holdingTone.color }}
             >
               {masked ? (
                 <span className="mask-text">******</span>
@@ -250,7 +250,7 @@ export default function GroupAccountSummaryCard({
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             <span
               className={accountTone.className}
-              style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-mono)', color: accountTone.color }}
+              style={{ fontSize: 16, fontWeight: 500, fontFamily: 'var(--font-mono)', color: accountTone.color }}
             >
               {masked ? (
                 <span className="mask-text">******</span>

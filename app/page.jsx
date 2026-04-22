@@ -6813,17 +6813,11 @@ export default function HomePage() {
     ]
   );
 
+  // 注意：不要在这里设置 overflow: hidden，会导致滚动条消失引起布局抖动
+  // 使用 Dialog 组件自带的滚动锁定即可
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    if (isAnyModalOpen) {
-      el.style.overflow = 'hidden';
-    } else {
-      el.style.overflow = '';
-    }
-    return () => {
-      if (containerRef.current) containerRef.current.style.overflow = '';
-    };
+    // 不再操作 container 的 overflow 样式
+    // 让 Dialog 组件自己处理 body scroll lock
   }, [isAnyModalOpen]);
 
   useEffect(() => {

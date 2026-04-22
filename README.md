@@ -3,15 +3,14 @@
 一个基于 Next.js 开发的基金估值与重仓股实时追踪工具。采用玻璃拟态设计（Glassmorphism），支持移动端适配。
 预览地址：  
 1. [https://meliauk.github.io/fund/](https://meliauk.github.io/fund/)
-2. [https://fund.cc.cd/](https://fund.cc.cd/) （加速国内访问）
 
 ## Star History
 
-<a href="https://www.star-history.com/?repos=meliauk%2Ffund&type=date&legend=top-left">
+<a href="https://www.star-history.com/?repos=meliauk%2Ffund&type=timeline&legend=bottom-right">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=meliauk/fund&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=meliauk/fund&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/image?repos=meliauk/fund&type=date&legend=top-left" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=meliauk/fund&type=timeline&theme=dark&legend=bottom-right" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=meliauk/fund&type=timeline&legend=bottom-right" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=meliauk/fund&type=timeline&legend=bottom-right" />
  </picture>
 </a>
 
