@@ -7216,7 +7216,7 @@ export default function HomePage() {
             </div>
           )}
           <span className="github-icon-wrap">
-            <Image unoptimized alt="项目Github地址" src={githubImg} style={{ width: '30px', height: '30px', cursor: 'pointer' }} onClick={() => window.open("https://github.com/hzm0321/real-time-fund")} />
+            <Image unoptimized alt="项目Github地址" src={githubImg} style={{ width: '30px', height: '30px', cursor: 'pointer' }} onClick={() => window.open("https://github.com/meliauk/fund")} />
           </span>
           {isMobile && (
             <button

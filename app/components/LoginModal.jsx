@@ -189,7 +189,7 @@ export default function LoginModal({
               }}
             >
           <span className="github-icon-wrap">
-            <Image unoptimized alt="项目Github地址" src={githubImg} style={{ width: '24px', height: '24px', cursor: 'pointer' }} onClick={() => window.open("https://github.com/hzm0321/real-time-fund")} />
+            <Image unoptimized alt="项目Github地址" src={githubImg} style={{ width: '24px', height: '24px', cursor: 'pointer' }} onClick={() => window.open("https://github.com/meliauk/fund")} />
           </span>
               <span>使用 GitHub 登录</span>
             </button>

@@ -2,16 +2,16 @@
 
 一个基于 Next.js 开发的基金估值与重仓股实时追踪工具。采用玻璃拟态设计（Glassmorphism），支持移动端适配。
 预览地址：  
-1. [https://hzm0321.github.io/real-time-fund/](https://hzm0321.github.io/real-time-fund/)
+1. [https://meliauk.github.io/fund/](https://meliauk.github.io/fund/)
 2. [https://fund.cc.cd/](https://fund.cc.cd/) （加速国内访问）
 
 ## Star History
 
-<a href="https://www.star-history.com/?repos=hzm0321%2Freal-time-fund&type=date&legend=top-left">
+<a href="https://www.star-history.com/?repos=meliauk%2Ffund&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=hzm0321/real-time-fund&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=hzm0321/real-time-fund&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/image?repos=hzm0321/real-time-fund&type=date&legend=top-left" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=meliauk/fund&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=meliauk/fund&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/image?repos=meliauk/fund&type=date&legend=top-left" />
  </picture>
 </a>
 
@@ -50,8 +50,8 @@
 
 1. 克隆仓库：
    ```bash
-   git clone https://github.com/hzm0321/real-time-fund.git
-   cd real-time-fund
+   git clone https://github.com/meliauk/fund.git
+   cd fund
    ```
 
 2. 安装依赖：
@@ -68,7 +68,7 @@
   - `NEXT_PUBLIC_Supabase_ANON_KEY`：Supabase 匿名公钥
   - `NEXT_PUBLIC_WEB3FORMS_ACCESS_KEY`：Web3Forms Access Key
   - `NEXT_PUBLIC_GA_ID`：Google Analytics Measurement ID（如 `G-xxxx`）
-  - `NEXT_PUBLIC_GITHUB_LATEST_RELEASE_URL`：GitHub 最新 Release 接口地址，用于在页面中展示"发现新版本"提示（如：`https://api.github.com/repos/hzm0321/real-time-fund/releases/latest`）
+  - `NEXT_PUBLIC_GITHUB_LATEST_RELEASE_URL`：GitHub 最新 Release 接口地址，用于在页面中展示"发现新版本"提示（如：`https://api.github.com/repos/meliauk/fund/releases/latest`）
   - `NEXT_PUBLIC_IS_GITHUB_LOGIN`：控制是否开启 GitHub OAuth 登录功能，可选值 `true` / `false`（默认 `false`）
 
 注：如不使用登录、反馈或 GA 统计功能，可不设置对应变量
@@ -241,19 +241,19 @@ docker compose up -d
 
 1. **拉取镜像**
    ```bash
-   docker pull hzm0321/real-time-fund:latest
+   docker pull meliauk/fund:latest
    ```
 
 2. **启动容器**  
    访问 [http://localhost:3000](http://localhost:3000) 即可使用。
    ```bash
-   docker run -d -p 3000:3000 --name real-time-fund --restart always hzm0321/real-time-fund:latest
+   docker run -d -p 3000:3000 --name fund --restart always meliauk/fund:latest
    ```
 
 3. **使用自定义环境变量（运行时替换）**  
    镜像内已预置占位符，启动时通过环境变量即可覆盖，无需重新构建。例如使用本地 `.env`：
    ```bash
-   docker run -d -p 3000:3000 --name real-time-fund --restart always --env-file .env hzm0321/real-time-fund:latest
+   docker run -d -p 3000:3000 --name fund --restart always --env-file .env meliauk/fund:latest
    ```
    或单独指定变量：`-e NEXT_PUBLIC_SUPABASE_URL=xxx -e NEXT_PUBLIC_SUPABASE_ANON_KEY=xxx`。  
    变量名与本地开发一致：`NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY`、`NEXT_PUBLIC_WEB3FORMS_ACCESS_KEY`、`NEXT_PUBLIC_GA_ID`、`NEXT_PUBLIC_GITHUB_LATEST_RELEASE_URL`。
