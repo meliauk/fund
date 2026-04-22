@@ -1026,6 +1026,8 @@ export default function MobileFundTable({
     const holdingAmountDisplay = hasHoldingAmount ? (original.holdingAmount ?? '—') : null;
     const isFavorites = favorites?.has?.(code);
     const isGroupTab = isCustomGroupTab;
+    // 需求：移动端「表格模式」下，自定义分组的正常模式隐藏删除按钮（删除入口统一收敛到编辑模式的批量删除）
+    const showGroupDeleteButton = false;
     const editSelected = code ? editSelectedCodes.has(code) : false;
     const holdingLocked =
       (currentTab === 'all' || currentTab === 'fav') &&
@@ -1115,29 +1117,31 @@ export default function MobileFundTable({
     }
 
     return (
-      <div className="name-cell-content" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="name-cell-content" style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: isCustomGroupTab? 0 : -4 }}>
         {isGroupTab ? (
-          <button
-            type="button"
-            className="icon-button"
-            onClick={(e) => {
-              e.stopPropagation?.();
-              onRemoveFundRef.current?.(original);
-            }}
-            title="删除"
-            style={{
-              backgroundColor: 'transparent',
-              flexShrink: 0,
-              opacity: 1,
-              cursor: 'pointer',
-              border: 'none',
-              height: 26,
-              width: 26,
-              marginRight: 4
-            }}
-          >
-            <TrashIcon width="18" height="18" />
-          </button>
+          showGroupDeleteButton ? (
+            <button
+              type="button"
+              className="icon-button"
+              onClick={(e) => {
+                e.stopPropagation?.();
+                onRemoveFundRef.current?.(original);
+              }}
+              title="删除"
+              style={{
+                backgroundColor: 'transparent',
+                flexShrink: 0,
+                opacity: 1,
+                cursor: 'pointer',
+                border: 'none',
+                height: 26,
+                width: 26,
+                marginRight: 4
+              }}
+            >
+              <TrashIcon width="18" height="18" />
+            </button>
+          ) : null
         ) : (
           <button
             className={`icon-button fav-button ${isFavorites ? 'active' : ''}`}
