@@ -10,7 +10,7 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
-import { isNumber, isString, isPlainObject } from 'lodash';
+import { isNumber, isString, isPlainObject, isNil } from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
 import { toast as sonnerToast } from 'sonner';
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from "@/components/ui/empty";
@@ -6195,6 +6195,29 @@ export default function HomePage() {
     }
   };
 
+  const mergeValuationFieldsByGztime = (localFund, cloudFund) => {
+    if (!isPlainObject(cloudFund)) return cloudFund;
+    if (!isPlainObject(localFund)) return cloudFund;
+
+    const localGzRaw = localFund.gztime;
+    const cloudGzRaw = cloudFund.gztime;
+
+    if (!isString(localGzRaw) || !isString(cloudGzRaw)) return cloudFund;
+
+    const localGz = toTz(localGzRaw);
+    const cloudGz = toTz(cloudGzRaw);
+    if (!localGz?.isValid?.() || !cloudGz?.isValid?.()) return cloudFund;
+
+    if (!localGz.isAfter(cloudGz)) return cloudFund;
+
+    const patch = {};
+    if (!isNil(localFund.gsz)) patch.gsz = localFund.gsz;
+    if (!isNil(localFund.gszzl)) patch.gszzl = localFund.gszzl;
+    if (!isNil(localFund.gztime)) patch.gztime = localFund.gztime;
+
+    return { ...cloudFund, ...patch };
+  };
+
   const applyCloudConfig = async (cloudData, cloudUpdatedAt) => {
     if (!isPlainObject(cloudData)) return;
     skipSyncRef.current = true;
@@ -6202,9 +6225,22 @@ export default function HomePage() {
       if (cloudUpdatedAt) {
         storageHelper.setItem('localUpdatedAt', cloudUpdatedAt);
       }
-      const nextFunds = Array.isArray(cloudData.funds)
+      let localFundsForMerge = [];
+      try {
+        const parsed = JSON.parse(localStorage.getItem('funds') || '[]');
+        localFundsForMerge = Array.isArray(parsed) ? parsed : [];
+      } catch { }
+      const localFundByCode = new Map(
+        localFundsForMerge
+          .map(stripLegacyTagsFromFundObject)
+          .filter((f) => f && f.code != null)
+          .map((f) => [String(f.code), f])
+      );
+
+      const cloudFunds = Array.isArray(cloudData.funds)
         ? dedupeByCode(cloudData.funds.map(stripLegacyTagsFromFundObject))
         : [];
+      const nextFunds = cloudFunds.map((cf) => mergeValuationFieldsByGztime(localFundByCode.get(String(cf?.code)), cf));
       setFunds(nextFunds);
       storageHelper.setItem('funds', JSON.stringify(nextFunds));
       const nextFundCodes = new Set(nextFunds.map((f) => f.code));
