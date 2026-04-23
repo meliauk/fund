@@ -4457,6 +4457,7 @@ export default function HomePage() {
   };
 
   const refreshAll = async (codes) => {
+    console.log('refreshAll called', codes, refreshingRef.current);  // 加这行
     if (refreshingRef.current) return;
     refreshingRef.current = true;
     setRefreshing(true);
@@ -4479,16 +4480,23 @@ export default function HomePage() {
     };
     try {
       const updated = [];
+      console.log('开始刷新', uniqueCodes.length, '个基金');
       for (const c of uniqueCodes) {
-        if (!fundCodeStillInStorage(c)) continue;
+        if (!fundCodeStillInStorage(c)) {
+          console.log('基金', c, '不在存储中，跳过');
+          continue;
+        }
         try {
+          console.log('正在获取基金', c, '的数据...');
           const data = await fetchFundData(c);
+          console.log('基金', c, '数据获取成功:', data);
           // 请求完数据，检查数据是否存在，可能会有刷新前存在，刷新过程中被删除的情况
           if (fundCodeStillInStorage(c)) {
             updated.push(data);
           }
         } catch (e) {
           console.error(`刷新基金 ${c} 失败`, e);
+          console.log('错误详情:', e?.message || e);
           // 失败时检查是否存在
           if (fundCodeStillInStorage(c)) {
             // 失败时从 localStorage 中寻找旧数据
@@ -4503,6 +4511,7 @@ export default function HomePage() {
         }
       }
 
+      console.log('刷新完成，成功获取', updated.length, '个基金数据');
       if (updated.length > 0) {
         setFunds(prev => {
           const storedCodes = readStoredFundCodes();
