@@ -74,6 +74,9 @@ import DcaModal from "./components/DcaModal";
 import MarketIndexAccordion from "./components/MarketIndexAccordion";
 import SortSettingModal from "./components/SortSettingModal";
 import githubImg from "./assets/github.svg";
+import SectorFlowModal from './components/SectorFlowModal';
+import { fetchSectorDetail, fetchFundSecidByRelatedSector, fetchRelatedSectors } from './api/fund';
+import { Wallet } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { recordValuation, getAllValuationSeries, clearFund } from './lib/valuationTimeseries';
 import {
@@ -843,8 +846,11 @@ export default function HomePage() {
   });
   const [isSyncing, setIsSyncing] = useState(false);
 
+  // 板块资金流向
+  const [sectors, setSectors] = useState([]);
+  const [sectorModalOpen, setSectorModalOpen] = useState(false);
+
   useEffect(() => {
-    // 未配置 GitHub 最新版本接口地址时，不进行更新检查
     if (!process.env.NEXT_PUBLIC_GITHUB_LATEST_RELEASE_URL) return;
 
     const checkUpdate = async () => {
@@ -866,6 +872,101 @@ export default function HomePage() {
     const interval = setInterval(checkUpdate, 30 * 60 * 1000); // 30 minutes
     return () => clearInterval(interval);
   }, []);
+
+  // 从 localStorage 加载板块列表
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = localStorage.getItem('sectors');
+      if (saved) {
+        setSectors(JSON.parse(saved));
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // 保存板块列表到 localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('sectors', JSON.stringify(sectors));
+    } catch {
+      // ignore
+    }
+  }, [sectors]);
+
+  // 定时刷新板块数据
+  useEffect(() => {
+    if (sectors.length === 0) return;
+
+    const refreshSectors = async () => {
+      const updated = [];
+      for (const s of sectors) {
+        if (!s.secid) continue;
+        try {
+          const data = await fetchSectorDetail(s.secid);
+          if (data) {
+            updated.push({ ...s, ...data });
+          } else {
+            updated.push(s);
+          }
+        } catch {
+          updated.push(s);
+        }
+      }
+      setSectors(updated);
+    };
+
+    refreshSectors();
+    const interval = setInterval(refreshSectors, 60 * 1000); // 每分钟刷新
+    return () => clearInterval(interval);
+  }, [sectors]);
+
+  // 根据基金列表初始化板块（如果没有板块）
+  useEffect(() => {
+    if (sectors.length > 0 || funds.length === 0) return;
+    
+    const initSectors = async () => {
+      const relatedSet = new Set();
+      // 遍历前10个基金，获取关联板块
+      for (const fund of funds.slice(0, 10)) {
+        try {
+          const related = await fetchRelatedSectors(fund.code);
+          if (related) {
+            related.split(/[,，]/).forEach(r => {
+              const name = r.trim();
+              if (name) relatedSet.add(name);
+            });
+          }
+        } catch {
+          // ignore
+        }
+      }
+      
+      // 匹配预设板块
+      const matched = availableSectors.filter(as => 
+        Array.from(relatedSet).some(r => r.includes(as.name) || as.name.includes(r))
+      ).slice(0, 5); // 最多选5个
+      
+      if (matched.length > 0) {
+        // 获取实时数据
+        const withData = await Promise.all(
+          matched.map(async (m) => {
+            try {
+              const data = await fetchSectorDetail(m.secid);
+              return data ? { ...m, ...data } : m;
+            } catch {
+              return m;
+            }
+          })
+        );
+        setSectors(withData);
+      }
+    };
+
+    initSectors();
+  }, [funds.length]);
 
   // 存储当前被划开的基金代码
   const [swipedFundCode, setSwipedFundCode] = useState(null);
@@ -5504,6 +5605,21 @@ export default function HomePage() {
     await refreshAll(codes);
   };
 
+  // 板块操作函数
+  const handleAddSector = async (sector) => {
+    if (sectors.some(s => s.name === sector.name)) return;
+    try {
+      const data = await fetchSectorDetail(sector.secid);
+      setSectors(prev => [...prev, data ? { ...sector, ...data } : sector]);
+    } catch {
+      setSectors(prev => [...prev, sector]);
+    }
+  };
+
+  const handleRemoveSector = (name) => {
+    setSectors(prev => prev.filter(s => s.name !== name));
+  };
+
   const saveSettings = (e, secondsOverride, showMarketIndexOverride, showGroupFundSearchOverride, isMobileOverride) => {
     e?.preventDefault?.();
     const seconds = secondsOverride ?? tempSeconds;
@@ -7242,9 +7358,27 @@ export default function HomePage() {
               <UpdateIcon width="14" height="14" />
             </div>
           )}
-          <span className="github-icon-wrap">
-            <Image unoptimized alt="项目Github地址" src={githubImg} style={{ width: '30px', height: '30px', cursor: 'pointer' }} onClick={() => window.open("https://github.com/meliauk/fund")} />
-          </span>
+          <button
+            className="icon-button"
+            aria-label="板块资金流向"
+            onClick={() => setSectorModalOpen(true)}
+            title="板块流向"
+            style={{ position: 'relative' }}
+          >
+            <Wallet width="18" height="18" />
+            {sectors.some(s => s.fundFlow > 0) && (
+              <span style={{
+                position: 'absolute',
+                top: -2,
+                right: -2,
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: 'var(--success)',
+                border: '2px solid var(--bg)'
+              }} />
+            )}
+          </button>
           {isMobile && (
             <button
               className="icon-button mobile-search-btn"
@@ -8513,6 +8647,19 @@ export default function HomePage() {
               localStorage.setItem('ignoredUpdateVersion', latestVersion);
               window.location.reload();
             }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* 板块资金流向弹窗 */}
+      <AnimatePresence>
+        {sectorModalOpen && (
+          <SectorFlowModal
+            open={sectorModalOpen}
+            onClose={() => setSectorModalOpen(false)}
+            sectors={sectors}
+            onAddSector={handleAddSector}
+            onRemoveSector={handleRemoveSector}
           />
         )}
       </AnimatePresence>

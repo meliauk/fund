@@ -135,6 +135,39 @@ export const fetchRelatedSectorLiveQuote = async (relatedSectorLabel) => {
   return fetchEastmoneySectorQuote(secid);
 };
 
+/**
+ * 获取板块/指数实时详情（包含涨跌幅和资金流入）
+ * @param {string} secid - 板块secid，如 "0.399006"
+ * @returns {Promise<{name: string, code: string, price: number, change: number, fundFlow: number}|null>}
+ */
+export const fetchSectorDetail = async (secid) => {
+  const s = secid != null ? String(secid).trim() : '';
+  if (!s || typeof fetch === 'undefined') return null;
+
+  try {
+    const url = `https://push2.eastmoney.com/api/qt/stock/get?secid=${encodeURIComponent(s)}&fields=f58,f57,f43,f170,f169,f47,f48,f60,f20,f21,f184,f66,f45,f168,f167,f50,f49,f52`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const json = await res.json();
+    const d = json?.data;
+    if (!d) return null;
+
+    const change = d.f170 != null && Number.isFinite(Number(d.f170)) ? Number(d.f170) / 100 : 0;
+    // 主力净流入 f184（万元），转换为元
+    const fundFlow = d.f184 != null && Number.isFinite(Number(d.f184)) ? Number(d.f184) * 10000 : 0;
+
+    return {
+      name: d.f58 != null ? String(d.f58) : '',
+      code: d.f57 != null ? String(d.f57) : '',
+      price: d.f43 != null && Number.isFinite(Number(d.f43)) ? Number(d.f43) / 1000 : 0,
+      change,
+      fundFlow,
+    };
+  } catch (e) {
+    return null;
+  }
+};
+
 function normalizeEastmoneyScriptUrl(url) {
   let key = url;
   try {
