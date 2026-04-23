@@ -686,8 +686,8 @@ export default function HomePage() {
   const [navbarHeight, setNavbarHeight] = useState(0);
   const [filterBarHeight, setFilterBarHeight] = useState(0);
   const [marketIndexAccordionHeight, setMarketIndexAccordionHeight] = useState(0);
-  // 主题初始固定为 dark，避免 SSR 与客户端首屏不一致导致 hydration 报错；真实偏好由 useLayoutEffect 在首帧前恢复
-  const [theme, setTheme] = useState('dark');
+  // 主题初始固定为 light（白色），避免 SSR 与客户端首屏不一致导致 hydration 报错；真实偏好由 useLayoutEffect 在首帧前恢复
+  const [theme, setTheme] = useState('light');
   const [showThemeTransition, setShowThemeTransition] = useState(false);
 
   const handleThemeToggle = useCallback(() => {
