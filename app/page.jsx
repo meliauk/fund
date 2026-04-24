@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useMemo, useLayoutEffect, useCallback } from 'react';
+import ScanButton from './components/ScanButton';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { createWorker } from 'tesseract.js';
@@ -105,284 +106,32 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(isSameOrAfter);
 
-const DEFAULT_TZ = 'Asia/Shanghai';
-const getBrowserTimeZone = () => {
-  if (typeof Intl !== 'undefined' && Intl.DateTimeFormat) {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    return tz || DEFAULT_TZ;
-  }
-  return DEFAULT_TZ;
-};
-const TZ = getBrowserTimeZone();
-dayjs.tz.setDefault(TZ);
-const nowInTz = () => dayjs().tz(TZ);
-const toTz = (input) => (input ? dayjs.tz(input, TZ) : nowInTz());
-const formatDate = (input) => toTz(input).format('YYYY-MM-DD');
+import {
+  getBrowserTimeZone,
+  TZ,
+  nowInTz,
+  toTz,
+  formatDate,
+  DCA_SCOPE_GLOBAL,
+  SUMMARY_TAB_ID,
+  SUMMARY_SOURCE_GLOBAL,
+  hasOwn,
+  DEFAULT_FUND_TAG_THEME,
+  normalizeFundTagTheme,
+  normalizeFundTagInstanceListFromInput,
+  stripLegacyTagsFromFundObject,
+  getFundCodesFromTagRecord,
+  sanitizeTagRowForStorage,
+  serializeTagRecordsForCompare,
+  mergeTagRowsByName,
+  mergeLegacyInlineTagsIntoRecords,
+  cloneHoldingDeep,
+  normalizeHoldingEntryForSeed,
+  seedGroupHoldingsFromGlobal,
+  migrateDcaPlansToScoped
+} from './lib/fundHelpers';
 
-/** 定投计划分桶：全局与其它自定义分组 */
-const DCA_SCOPE_GLOBAL = '__global__';
-/** 虚拟 Tab：多分组有持仓时的汇总视图（非真实分组 id） */
-const SUMMARY_TAB_ID = '__portfolio_groups_summary__';
-/** 汇总合并持仓映射中：表示该笔展示来自「全部」全局持仓（非真实分组 id） */
-const SUMMARY_SOURCE_GLOBAL = '__portfolio_summary_global__';
-const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
-
-/** 独立存储的基金标签默认主题（localStorage `tags`） */
-const DEFAULT_FUND_TAG_THEME = 'default';
-
-/** 与 AddTagDialog TAG_THEME_OPTIONS 的 key 一致（单一数据源，避免漏改） */
-const ALLOWED_FUND_TAG_THEMES = new Set(TAG_THEME_OPTIONS.map((o) => o.key));
-
-function normalizeFundTagTheme(t) {
-  const s = String(t ?? '').trim();
-  return ALLOWED_FUND_TAG_THEMES.has(s) ? s : DEFAULT_FUND_TAG_THEME;
-}
-
-/**
- * 单只基金已选标签实例（允许同名多枚）。
- * @returns {{ id: string, name: string, theme: string }[]}
- */
-function normalizeFundTagInstanceListFromInput(rows) {
-  const out = [];
-  const usedIds = new Set();
-  for (const r of rows || []) {
-    if (!r || typeof r !== 'object') continue;
-    const name = String(r.name ?? '').trim();
-    if (!name || name.length > 24) continue;
-    let id = String(r.id ?? '').trim();
-    if (!id || usedIds.has(id)) id = uuidv4();
-    usedIds.add(id);
-    out.push({
-      id,
-      name,
-      theme: normalizeFundTagTheme(r.theme),
-    });
-    if (out.length >= 30) break;
-  }
-  return out;
-}
-
-/** 从基金对象中移除旧版内联字段 `tags`（已迁移到独立 `tags` 存储） */
-function stripLegacyTagsFromFundObject(f) {
-  if (!f || typeof f !== 'object' || !hasOwn(f, 'tags')) return f;
-  const { tags: _removed, ...rest } = f;
-  return rest;
-}
-
-/** 从标签记录读取基金代码列表（仅 `fundCodes`） */
-function getFundCodesFromTagRecord(r) {
-  if (!r || typeof r !== 'object' || !Array.isArray(r.fundCodes)) return [];
-  return [...new Set(r.fundCodes.map((c) => String(c).trim()).filter(Boolean))];
-}
-
-/** 仅保留 id / name / theme / fundCodes（fundCodes 可为空：仅存在于可选池、尚未挂到任何基金） */
-function sanitizeTagRowForStorage(r) {
-  if (!r || typeof r !== 'object') return null;
-  const name = String(r.name ?? '').trim();
-  const codes = getFundCodesFromTagRecord(r);
-  if (!name) return null;
-  return {
-    id: String(r.id ?? '').trim() || uuidv4(),
-    name,
-    theme: String(r.theme ?? '').trim() || DEFAULT_FUND_TAG_THEME,
-    fundCodes: codes.sort(),
-  };
-}
-
-/** 用于判断标签列表是否实质变化（避免无意义的 setItem） */
-function serializeTagRecordsForCompare(rows) {
-  return JSON.stringify(
-    [...(rows || [])]
-      .map((r) => ({
-        id: String(r?.id ?? ''),
-        name: String(r?.name ?? '').trim(),
-        theme: String(r?.theme ?? '').trim(),
-        fundCodes: getFundCodesFromTagRecord(r).slice().sort(),
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-  );
-}
-
-/** 同名标签合并为一条，基金代码取并集（用于迁移与保存去重） */
-function mergeTagRowsByName(rows) {
-  const byName = new Map();
-  for (const row of rows || []) {
-    if (!row || typeof row !== 'object') continue;
-    const nm = String(row.name ?? '').trim();
-    if (!nm) continue;
-    const codes = getFundCodesFromTagRecord(row);
-    const ex = byName.get(nm);
-    if (ex) {
-      ex.fundCodes = [...new Set([...ex.fundCodes, ...codes])].sort();
-    } else {
-      byName.set(nm, {
-        id: String(row.id ?? '').trim(),
-        name: nm,
-        theme: String(row.theme ?? '').trim() || DEFAULT_FUND_TAG_THEME,
-        fundCodes: [...codes].sort(),
-      });
-    }
-  }
-  return Array.from(byName.values());
-}
-
-/**
- * 合并独立标签记录与基金上旧版内联 tags 字符串数组；同名合并为一条并写入 fundCodes
- * @param {Array} fundsList
- * @param {Array} existingRecords
- * @param {() => string} newId
- */
-function mergeLegacyInlineTagsIntoRecords(fundsList, existingRecords, newId) {
-  const normalizeRow = (r) => {
-    if (!r || typeof r !== 'object') return null;
-    const name = String(r.name ?? '').trim();
-    if (!name) return null;
-    const codes = getFundCodesFromTagRecord(r);
-    return {
-      id: String(r.id ?? '').trim() || newId(),
-      name,
-      theme: String(r.theme ?? '').trim() || DEFAULT_FUND_TAG_THEME,
-      fundCodes: codes.sort(),
-    };
-  };
-
-  const acc = [];
-  for (const r of existingRecords || []) {
-    const row = normalizeRow(r);
-    if (row) acc.push(row);
-  }
-  const byName = new Map(mergeTagRowsByName(acc).map((r) => [r.name, r]));
-
-  for (const f of fundsList || []) {
-    if (!f?.code || !Array.isArray(f.tags)) continue;
-    const fc = String(f.code).trim();
-    for (const t of f.tags) {
-      const name = String(t).trim();
-      if (!name) continue;
-      const ex = byName.get(name);
-      if (ex) {
-        if (!ex.fundCodes.includes(fc)) {
-          ex.fundCodes = [...ex.fundCodes, fc].sort();
-        }
-      } else {
-        byName.set(name, {
-          id: newId(),
-          name,
-          theme: DEFAULT_FUND_TAG_THEME,
-          fundCodes: [fc],
-        });
-      }
-    }
-  }
-  return Array.from(byName.values());
-}
-
-function cloneHoldingDeep(src) {
-  if (!isPlainObject(src)) return null;
-  try {
-    return typeof structuredClone === 'function' ? structuredClone(src) : JSON.parse(JSON.stringify(src));
-  } catch {
-    return { ...src };
-  }
-}
-
-/** 规范化单条持仓（与 collectLocalPayload 清洗逻辑对齐） */
-function normalizeHoldingEntryForSeed(value) {
-  if (!isPlainObject(value)) return null;
-  const parsedShare = isNumber(value.share)
-    ? value.share
-    : isString(value.share)
-      ? Number(value.share)
-      : NaN;
-  const parsedCost = isNumber(value.cost)
-    ? value.cost
-    : isString(value.cost)
-      ? Number(value.cost)
-      : NaN;
-  const nextShare = Number.isFinite(parsedShare) ? parsedShare : null;
-  const nextCost = Number.isFinite(parsedCost) ? parsedCost : null;
-  if (nextShare === null && nextCost === null) return null;
-  return { ...value, share: nextShare, cost: nextCost };
-}
-
-/**
- * 幂等：按分组用全局持仓填空槽；剔除已删除分组的 key；多分组各得深拷贝。
- */
-function seedGroupHoldingsFromGlobal(globalHoldings, groups, prevGroupHoldings) {
-  const prev = isPlainObject(prevGroupHoldings) ? prevGroupHoldings : {};
-  const groupIdSet = new Set(groups.map((g) => g?.id).filter(Boolean));
-  const next = {};
-  for (const id of groupIdSet) {
-    next[id] = { ...(isPlainObject(prev[id]) ? prev[id] : {}) };
-  }
-  let changed = Object.keys(prev).some((id) => !groupIdSet.has(id));
-  if (!changed && Object.keys(next).length !== Object.keys(prev).filter((id) => groupIdSet.has(id)).length) {
-    changed = true;
-  }
-  if (isPlainObject(globalHoldings)) {
-    for (const g of groups) {
-      if (!g?.id || !groupIdSet.has(g.id)) continue;
-      const bucket = next[g.id];
-      for (const code of g.codes || []) {
-        if (!code || bucket[code] !== undefined) continue;
-        const norm = normalizeHoldingEntryForSeed(globalHoldings[code]);
-        if (!norm) continue;
-        const cloned = cloneHoldingDeep(norm);
-        if (cloned) {
-          bucket[code] = cloned;
-          changed = true;
-        }
-      }
-    }
-  }
-  if (!changed) {
-    const prevKeys = Object.keys(prev).sort();
-    const nextKeys = Object.keys(next).sort();
-    if (prevKeys.join(',') !== nextKeys.join(',')) changed = true;
-    else {
-      for (const id of nextKeys) {
-        if (JSON.stringify(next[id]) !== JSON.stringify(prev[id])) {
-          changed = true;
-          break;
-        }
-      }
-    }
-  }
-  return { next, changed };
-}
-
-/** 旧版扁平 dcaPlans（code -> plan）→ { __global__: { ... } } */
-function migrateDcaPlansToScoped(raw) {
-  if (!isPlainObject(raw)) return { [DCA_SCOPE_GLOBAL]: {} };
-  if (raw[DCA_SCOPE_GLOBAL] !== undefined && isPlainObject(raw[DCA_SCOPE_GLOBAL])) {
-    return raw;
-  }
-  return { [DCA_SCOPE_GLOBAL]: { ...raw } };
-}
-
-function ScanButton({ onClick, disabled }) {
-  return (
-    <button
-      type="button"
-      className="icon-button"
-      onClick={onClick}
-      disabled={disabled}
-      title="拍照/上传图片识别基金代码"
-      style={{
-        opacity: disabled ? 0.5 : 1,
-        cursor: disabled ? 'wait' : 'pointer',
-        width: '32px',
-        height: '32px'
-      }}
-    >
-      {disabled ? (
-        <div className="loading-spinner" style={{ width: 16, height: 16, border: '2px solid var(--muted)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-      ) : (
-        <CameraIcon width="18" height="18" />
-      )}
-    </button>
-  );
-}
+import GlobalToast from './components/GlobalToast';
 
 export default function HomePage() {
   const [funds, setFunds] = useState([]);
@@ -8746,49 +8495,7 @@ export default function HomePage() {
       </AnimatePresence>
 
       {/* 全局轻提示 Toast */}
-      <AnimatePresence>
-        {toast.show && (
-          <motion.div
-            initial={{ opacity: 0, y: -20, x: '-50%' }}
-            animate={{ opacity: 1, y: 0, x: '-50%' }}
-            exit={{ opacity: 0, y: -20, x: '-50%' }}
-            style={{
-              position: 'fixed',
-              top: 24,
-              left: '50%',
-              zIndex: 9999,
-              padding: '10px 20px',
-              background: toast.type === 'error' ? 'rgba(239, 68, 68, 0.9)' :
-                          toast.type === 'success' ? 'rgba(34, 197, 94, 0.9)' :
-                          'rgba(30, 41, 59, 0.9)',
-              color: '#fff',
-              borderRadius: '8px',
-              backdropFilter: 'blur(8px)',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-              fontSize: '14px',
-              fontWeight: 500,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              maxWidth: '90vw',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            {toast.type === 'error' && (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                <path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-            )}
-            {toast.type === 'success' && (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            )}
-            {toast.message}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <GlobalToast toast={toast} />
     </div>
   );
 }
