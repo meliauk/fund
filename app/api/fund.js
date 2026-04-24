@@ -92,6 +92,53 @@ export const fetchFundSecidByRelatedSector = async (relatedSector, { cacheTime =
 };
 
 /**
+ * 根据关键词模糊搜索 fund_secid 表中的板块
+ * @param {string} keyword - 搜索关键词
+ * @param {number} limit - 返回结果数量限制
+ * @returns {Promise<Array<{related_sector: string, secid: string}>>}
+ */
+export const searchSectorsByRelatedSector = async (keyword, { limit = 10, cacheTime = 60 * 1000 } = {}) => {
+    const normalized = keyword != null ? String(keyword).trim().toUpperCase() : '';
+    if (!normalized) {
+    console.log('[搜索板块] 关键词为空');
+    return [];
+  }
+  if (!isSupabaseConfigured) {
+    console.log('[搜索板块] Supabase 未配置');
+    return [];
+  }
+
+  console.log('[搜索板块] 搜索关键词:', normalized);
+
+  try {
+    const results = await getQueryClient().fetchQuery({
+      queryKey: ['sectorSearchByKeyword', normalized, limit],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from('fund_secid')
+          .select('related_sector, secid')
+          .ilike('related_sector', `%${normalized}%`)
+          .limit(limit);
+
+        if (error) {
+          console.error('[搜索板块] 查询失败:', error);
+          return [];
+        }
+        console.log('[搜索板块] 查询结果:', data);
+        return data || [];
+      },
+      staleTime: cacheTime,
+    });
+
+    console.log('[搜索板块] 返回结果数:', results.length);
+    return results;
+  } catch (e) {
+    console.error('[搜索板块] 异常:', e);
+    return [];
+  }
+};
+
+/**
  * 东方财富 push2delay 板块/指数行情（涨跌幅等）
  * @returns {{ name: string, code: string, pct: number|null }|null}
  */
@@ -145,24 +192,28 @@ export const fetchSectorDetail = async (secid) => {
   if (!s || typeof fetch === 'undefined') return null;
 
   try {
-    const url = `https://push2.eastmoney.com/api/qt/stock/get?secid=${encodeURIComponent(s)}&fields=f58,f57,f43,f170,f169,f47,f48,f60,f20,f21,f184,f66,f45,f168,f167,f50,f49,f52`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const json = await res.json();
-    const d = json?.data;
-    if (!d) return null;
-
-    const change = d.f170 != null && Number.isFinite(Number(d.f170)) ? Number(d.f170) / 100 : 0;
-    // 主力净流入 f184（万元），转换为元
-    const fundFlow = d.f184 != null && Number.isFinite(Number(d.f184)) ? Number(d.f184) * 10000 : 0;
-
-    return {
-      name: d.f58 != null ? String(d.f58) : '',
-      code: d.f57 != null ? String(d.f57) : '',
-      price: d.f43 != null && Number.isFinite(Number(d.f43)) ? Number(d.f43) / 1000 : 0,
-      change,
-      fundFlow,
-    };
+    const detail = await getQueryClient().fetchQuery({
+      queryKey: ['sectorDetail', s],
+      queryFn: async () => {
+        const url = `https://push2delay.eastmoney.com/api/qt/stock/get?secid=${encodeURIComponent(s)}&fields=f58,f57,f43,f170,f169,f124,f86`;
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const json = await res.json();
+        const d = json?.data;
+        if (!d) return null;
+        const change = d.f170 != null && Number.isFinite(Number(d.f170)) ? Number(d.f170) / 100 : 0;
+        const fundFlow = d.f184 != null && Number.isFinite(Number(d.f184)) ? Number(d.f184) * 10000 : 0;
+        return {
+          name: d.f58 != null ? String(d.f58) : '',
+          code: d.f57 != null ? String(d.f57) : '',
+          price: d.f43 != null && Number.isFinite(Number(d.f43)) ? Number(d.f43) / 1000 : 0,
+          change,
+          fundFlow,
+        };
+      },
+      staleTime: 60 * 1000, // 1分钟缓存
+    });
+    return detail || null;
   } catch (e) {
     return null;
   }

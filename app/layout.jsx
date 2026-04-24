@@ -8,7 +8,7 @@ import { QueryClientProviderWrapper } from './providers/query-client-provider';
 import packageJson from '../package.json';
 
 export const metadata = {
-  title: `基估宝 V${packageJson.version}`,
+  title: `基估宝`,
   description: '输入基金编号添加基金，实时显示估值与前10重仓'
 };
 

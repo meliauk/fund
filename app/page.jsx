@@ -75,6 +75,7 @@ import MarketIndexAccordion from "./components/MarketIndexAccordion";
 import SortSettingModal from "./components/SortSettingModal";
 import githubImg from "./assets/github.svg";
 import SectorFlowModal from './components/SectorFlowModal';
+import SectorFlowDetailModal from './components/SectorFlowDetailModal';
 import { fetchSectorDetail, fetchFundSecidByRelatedSector, fetchRelatedSectors } from './api/fund';
 import { Wallet } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
@@ -849,6 +850,8 @@ export default function HomePage() {
   // 板块资金流向
   const [sectors, setSectors] = useState([]);
   const [sectorModalOpen, setSectorModalOpen] = useState(false);
+  const [sectorDetailModalOpen, setSectorDetailModalOpen] = useState(false);
+  const [selectedSector, setSelectedSector] = useState(null);
 
   useEffect(() => {
     if (!process.env.NEXT_PUBLIC_GITHUB_LATEST_RELEASE_URL) return;
@@ -896,13 +899,19 @@ export default function HomePage() {
     }
   }, [sectors]);
 
-  // 定时刷新板块数据
+  // 定时刷新板块数据 - 使用ref避免依赖sectors导致无限循环
+  const sectorsRef = useRef(sectors);
+  useEffect(() => {
+    sectorsRef.current = sectors;
+  }, [sectors]);
+
   useEffect(() => {
     if (sectors.length === 0) return;
 
     const refreshSectors = async () => {
+      const currentSectors = sectorsRef.current;
       const updated = [];
-      for (const s of sectors) {
+      for (const s of currentSectors) {
         if (!s.secid) continue;
         try {
           const data = await fetchSectorDetail(s.secid);
@@ -919,9 +928,9 @@ export default function HomePage() {
     };
 
     refreshSectors();
-    const interval = setInterval(refreshSectors, 60 * 1000); // 每分钟刷新
+    const interval = setInterval(refreshSectors, 5 * 60 * 1000); // 每5分钟刷新
     return () => clearInterval(interval);
-  }, [sectors]);
+  }, []); // 空依赖，只在组件挂载时启动定时器
 
   // 根据基金列表初始化板块（如果没有板块）
   useEffect(() => {
@@ -930,7 +939,7 @@ export default function HomePage() {
     const initSectors = async () => {
       const relatedSet = new Set();
       // 遍历前10个基金，获取关联板块
-      for (const fund of funds.slice(0, 10)) {
+      for (const fund of funds) {
         try {
           const related = await fetchRelatedSectors(fund.code);
           if (related) {
@@ -943,26 +952,7 @@ export default function HomePage() {
           // ignore
         }
       }
-      
-      // 匹配预设板块
-      const matched = availableSectors.filter(as => 
-        Array.from(relatedSet).some(r => r.includes(as.name) || as.name.includes(r))
-      ).slice(0, 5); // 最多选5个
-      
-      if (matched.length > 0) {
-        // 获取实时数据
-        const withData = await Promise.all(
-          matched.map(async (m) => {
-            try {
-              const data = await fetchSectorDetail(m.secid);
-              return data ? { ...m, ...data } : m;
-            } catch {
-              return m;
-            }
-          })
-        );
-        setSectors(withData);
-      }
+
     };
 
     initSectors();
@@ -4588,9 +4578,9 @@ export default function HomePage() {
           continue;
         }
         try {
-          console.log('正在获取基金', c, '的数据...');
+          // console.log('正在获取基金', c, '的数据...');
           const data = await fetchFundData(c);
-          console.log('基金', c, '数据获取成功:', data);
+          // console.log('基金', c, '数据获取成功:', data);
           // 请求完数据，检查数据是否存在，可能会有刷新前存在，刷新过程中被删除的情况
           if (fundCodeStillInStorage(c)) {
             updated.push(data);
@@ -7366,18 +7356,6 @@ export default function HomePage() {
             style={{ position: 'relative' }}
           >
             <Wallet width="18" height="18" />
-            {sectors.some(s => s.fundFlow > 0) && (
-              <span style={{
-                position: 'absolute',
-                top: -2,
-                right: -2,
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: 'var(--success)',
-                border: '2px solid var(--bg)'
-              }} />
-            )}
           </button>
           {isMobile && (
             <button
@@ -8652,14 +8630,30 @@ export default function HomePage() {
       </AnimatePresence>
 
       {/* 板块资金流向弹窗 */}
+      {sectorModalOpen && (
+        <SectorFlowModal
+          open={sectorModalOpen}
+          onClose={() => setSectorModalOpen(false)}
+          sectors={sectors}
+          onAddSector={handleAddSector}
+          onRemoveSector={handleRemoveSector}
+          onSectorClick={(sector) => {
+            setSelectedSector(sector);
+            setSectorDetailModalOpen(true);
+          }}
+        />
+      )}
+
+      {/* 板块资金流向详情弹窗 */}
       <AnimatePresence>
-        {sectorModalOpen && (
-          <SectorFlowModal
-            open={sectorModalOpen}
-            onClose={() => setSectorModalOpen(false)}
-            sectors={sectors}
-            onAddSector={handleAddSector}
-            onRemoveSector={handleRemoveSector}
+        {sectorDetailModalOpen && selectedSector && (
+          <SectorFlowDetailModal
+            open={sectorDetailModalOpen}
+            onClose={() => {
+              setSectorDetailModalOpen(false);
+              setSelectedSector(null);
+            }}
+            sector={selectedSector}
           />
         )}
       </AnimatePresence>
