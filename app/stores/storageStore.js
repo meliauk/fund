@@ -75,6 +75,8 @@ export const useStorageStore = create((set, get) => ({
   pendingTrades: [],
   transactions: {},
   dcaPlans: {},
+  customSettings: {},
+  fundDailyEarnings: {},
 
   initFunds: () => {
     if (typeof window !== 'undefined') {
@@ -129,6 +131,28 @@ export const useStorageStore = create((set, get) => ({
   initDcaPlans: () => {
     if (typeof window !== 'undefined') {
       set({ dcaPlans: get().getItem('dcaPlans', {}) });
+    }
+  },
+
+  initCustomSettings: () => {
+    if (typeof window !== 'undefined') {
+      set({ customSettings: get().getItem('customSettings', {}) });
+    }
+  },
+
+  initFundDailyEarnings: () => {
+    if (typeof window !== 'undefined') {
+      const parsed = get().getItem('fundDailyEarnings', {});
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const values = Object.values(parsed);
+        const hasScoped = values.some((v) => v && typeof v === 'object' && !Array.isArray(v));
+        if (!hasScoped && Object.keys(parsed).length > 0) {
+          // 迁移旧版扁平格式为 { "all": 原对象 }
+          set({ fundDailyEarnings: { all: parsed } });
+          return;
+        }
+      }
+      set({ fundDailyEarnings: parsed });
     }
   },
 
@@ -216,6 +240,18 @@ export const useStorageStore = create((set, get) => ({
     get().setItem('dcaPlans', JSON.stringify(next));
   },
 
+  setCustomSettings: (nextCustomSettings) => {
+    const next = typeof nextCustomSettings === 'function' ? nextCustomSettings(get().customSettings) : nextCustomSettings;
+    set({ customSettings: next });
+    get().setItem('customSettings', JSON.stringify(next));
+  },
+
+  setFundDailyEarnings: (nextFundDailyEarnings) => {
+    const next = typeof nextFundDailyEarnings === 'function' ? nextFundDailyEarnings(get().fundDailyEarnings) : nextFundDailyEarnings;
+    set({ fundDailyEarnings: next });
+    get().setItem('fundDailyEarnings', JSON.stringify(next));
+  },
+
   /**
    * 核心写入方法：同步更新 localStorage 和 Store 状态，并触发同步
    * @param {string} key 
@@ -226,6 +262,28 @@ export const useStorageStore = create((set, get) => ({
     
     // 更新本地存储
     window.localStorage.setItem(key, value);
+
+    // 同步更新 Store 状态，确保 UI 响应
+    try {
+      const parsed = JSON.parse(value);
+      if (key === 'funds') set({ funds: parsed });
+      else if (key === 'groups') set({ groups: parsed });
+      else if (key === 'favorites') set({ favorites: new Set(parsed) });
+      else if (key === 'collapsedCodes') set({ collapsedCodes: new Set(parsed) });
+      else if (key === 'collapsedTrends') set({ collapsedTrends: new Set(parsed) });
+      else if (key === 'collapsedEarnings') set({ collapsedEarnings: new Set(parsed) });
+      else if (key === 'refreshMs') set({ refreshMs: Number(parsed) });
+      else if (key === 'holdings') set({ holdings: parsed });
+      else if (key === 'groupHoldings') set({ groupHoldings: parsed });
+      else if (key === 'pendingTrades') set({ pendingTrades: parsed });
+      else if (key === 'transactions') set({ transactions: parsed });
+      else if (key === 'dcaPlans') set({ dcaPlans: parsed });
+      else if (key === 'customSettings') set({ customSettings: parsed });
+      else if (key === 'fundDailyEarnings') set({ fundDailyEarnings: parsed });
+    } catch (e) {
+      // 如果不是 JSON，或者是 refreshMs 这种数字字符串
+      if (key === 'refreshMs') set({ refreshMs: Number(value) });
+    }
 
     // 触发同步逻辑
     const { onSync } = get();
