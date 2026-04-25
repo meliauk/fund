@@ -145,9 +145,12 @@ export default function HomePage() {
     holdings, setHoldings,
     groupHoldings, setGroupHoldings,
     pendingTrades, setPendingTrades,
+    transactions, setTransactions,
+    dcaPlans, setDcaPlans,
     initCollapsed, initRefreshMs,
     initHoldings, initGroupHoldings,
-    initPendingTrades
+    initPendingTrades, initTransactions,
+    initDcaPlans
   } = useStorageStore();
   /** 基金标签（独立 localStorage 键 `tags`）：{ id, name, theme, fundCodes: string[] }[] */
   const [fundTagRecords, setFundTagRecords] = useState([]);
@@ -507,8 +510,6 @@ export default function HomePage() {
     name: '',
     targetGroupId: null,
   });
-  const [transactions, setTransactions] = useState({}); // { [code]: [{ id, type, amount, share, price, date, timestamp }] }
-  const [dcaPlans, setDcaPlans] = useState({}); // scoped: { __global__|groupId: { [code]: plan } }
   const [historyModal, setHistoryModal] = useState({ open: false, fund: null });
   const [addHistoryModal, setAddHistoryModal] = useState({ open: false, fund: null });
   const [percentModes, setPercentModes] = useState({}); // { [code]: boolean }
@@ -517,12 +518,14 @@ export default function HomePage() {
   const holdingsRef = useRef(null);
   const groupHoldingsRef = useRef(null);
   const pendingTradesRef = useRef(null);
+  const transactionsRef = useRef(null);
 
   useEffect(() => {
     holdingsRef.current = holdings;
     groupHoldingsRef.current = groupHoldings;
     pendingTradesRef.current = pendingTrades;
-  }, [holdings, groupHoldings, pendingTrades]);
+    transactionsRef.current = transactions;
+  }, [holdings, groupHoldings, pendingTrades, transactions]);
 
   const [isTradingDay, setIsTradingDay] = useState(true); // 默认为交易日，通过接口校正
   const tabsRef = useRef(null);
@@ -1797,7 +1800,6 @@ export default function HomePage() {
         });
         if (filtered.length) next[code] = filtered;
         else delete next[code];
-        storageHelper.setItem('transactions', JSON.stringify(next));
         return next;
       });
 
@@ -1821,7 +1823,6 @@ export default function HomePage() {
         } else {
           next[dcaScope] = bucket;
         }
-        storageHelper.setItem('dcaPlans', JSON.stringify(next));
         return next;
       });
     }
@@ -1950,7 +1951,6 @@ export default function HomePage() {
                   nextState[tx.fundCode] = [row, ...current].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
               }
           });
-          storageHelper.setItem('transactions', JSON.stringify(nextState));
           return nextState;
       });
 
@@ -1968,7 +1968,6 @@ export default function HomePage() {
         return !inScope;
       });
       const nextState = { ...prev, [fundCode]: next };
-      storageHelper.setItem('transactions', JSON.stringify(nextState));
       return nextState;
     });
     showToast('交易记录已删除', 'success');
@@ -2010,7 +2009,6 @@ export default function HomePage() {
 
       const nextList = [...list, ...copied].sort((a, b) => (b?.timestamp || 0) - (a?.timestamp || 0));
       const nextState = { ...prev, [fundCode]: nextList };
-      storageHelper.setItem('transactions', JSON.stringify(nextState));
       return nextState;
     });
 
@@ -2070,7 +2068,6 @@ export default function HomePage() {
       // 按时间倒序排列
       const next = [record, ...current].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
       const nextState = { ...prev, [fundCode]: next };
-      storageHelper.setItem('transactions', JSON.stringify(nextState));
       return nextState;
     });
     showToast('历史记录已添加', 'success');
@@ -2157,7 +2154,6 @@ export default function HomePage() {
       };
       const next = [record, ...curList];
       const nextState = { ...prev, [fund.code]: next };
-      storageHelper.setItem('transactions', JSON.stringify(nextState));
       return nextState;
     });
 
@@ -3087,13 +3083,11 @@ export default function HomePage() {
     if (newPending.length === 0) {
       if (JSON.stringify(nextPlans) !== JSON.stringify(scoped)) {
         setDcaPlans(nextPlans);
-        storageHelper.setItem('dcaPlans', JSON.stringify(nextPlans));
       }
       return;
     }
 
     setDcaPlans(nextPlans);
-    storageHelper.setItem('dcaPlans', JSON.stringify(nextPlans));
 
     setPendingTrades(prev => {
       const merged = [...(prev || []), ...newPending];
@@ -3137,7 +3131,6 @@ export default function HomePage() {
       if (!scoped[id]) return prev;
       const nextDca = { ...scoped };
       delete nextDca[id];
-      storageHelper.setItem('dcaPlans', JSON.stringify(nextDca));
       return nextDca;
     });
     setPendingTrades((prev) => {
@@ -3183,7 +3176,6 @@ export default function HomePage() {
             dcaChanged = true;
           }
         });
-        if (dcaChanged) storageHelper.setItem('dcaPlans', JSON.stringify(nextDca));
         return dcaChanged ? nextDca : prev;
       });
       setPendingTrades((prev) => {
@@ -3219,7 +3211,6 @@ export default function HomePage() {
             else delete out[code];
           }
         });
-        if (changed) storageHelper.setItem('transactions', JSON.stringify(out));
         return changed ? out : prev;
       });
       setFundDailyEarnings((prev) => {
@@ -3294,7 +3285,6 @@ export default function HomePage() {
           }
         }
         if (!changed) return prev;
-        storageHelper.setItem('transactions', JSON.stringify(out));
         return out;
       });
 
@@ -3312,7 +3302,6 @@ export default function HomePage() {
         }
         if (!changed) return prev;
         const nextScoped = { ...scoped, [gid]: nextBucket };
-        storageHelper.setItem('dcaPlans', JSON.stringify(nextScoped));
         return nextScoped;
       });
 
@@ -3371,7 +3360,6 @@ export default function HomePage() {
       const next = { ...prev };
       if (filtered.length) next[code] = filtered;
       else delete next[code];
-      storageHelper.setItem('transactions', JSON.stringify(next));
       return next;
     });
 
@@ -3381,7 +3369,6 @@ export default function HomePage() {
       const bucket = { ...scoped[groupId] };
       delete bucket[code];
       const nextScoped = { ...scoped, [groupId]: bucket };
-      storageHelper.setItem('dcaPlans', JSON.stringify(nextScoped));
       return nextScoped;
     });
     try {
@@ -3446,7 +3433,6 @@ export default function HomePage() {
         }
       }
       if (!changed) return prev;
-      storageHelper.setItem('transactions', JSON.stringify(next));
       return next;
     });
 
@@ -3463,7 +3449,6 @@ export default function HomePage() {
       }
       if (!changed) return prev;
       const nextScoped = { ...scoped, [groupId]: bucket };
-      storageHelper.setItem('dcaPlans', JSON.stringify(nextScoped));
       return nextScoped;
     });
     try {
@@ -3575,6 +3560,8 @@ export default function HomePage() {
       initHoldings();
       initGroupHoldings();
       initPendingTrades();
+      initTransactions();
+      initDcaPlans();
       try {        // 已登录用户：不在此处调用 refreshAll，等 fetchCloudConfig 完成后由 applyCloudConfig 统一刷新        let shouldRefreshFromLocal = true;
         if (isSupabaseConfigured) {
           const { data, error } = await supabase.auth.getSession();
@@ -3668,16 +3655,10 @@ export default function HomePage() {
       if (seedGh.changed) {
         setGroupHoldings(seedGh.next);
       }
-      const savedTransactions = storageStore.getItem('transactions', {});
-      if (isPlainObject(savedTransactions)) {
-        setTransactions(savedTransactions);
+      const migratedDca = migrateDcaPlansToScoped(isPlainObject(dcaPlans) ? dcaPlans : {});
+      if (JSON.stringify(migratedDca) !== JSON.stringify(dcaPlans)) {
+        setDcaPlans(migratedDca);
       }
-      const savedDcaPlans = storageStore.getItem('dcaPlans', {});
-      const migratedDca = migrateDcaPlansToScoped(isPlainObject(savedDcaPlans) ? savedDcaPlans : {});
-      if (JSON.stringify(migratedDca) !== JSON.stringify(savedDcaPlans)) {
-        storageHelper.setItem('dcaPlans', JSON.stringify(migratedDca));
-      }
-      setDcaPlans(migratedDca);
       const savedViewMode = storageStore.getItem('viewMode');
       if (savedViewMode === 'card' || savedViewMode === 'list') {
         setViewMode(savedViewMode);
@@ -4699,7 +4680,6 @@ export default function HomePage() {
         out[code] = nextArr;
       }
       if (!changed) return prev;
-      storageHelper.setItem('transactions', JSON.stringify(out));
       return out;
     });
 
@@ -4719,7 +4699,6 @@ export default function HomePage() {
       }
       if (!changed) return prev;
       const nextScoped = { ...scoped, [fromKey]: fromBucket, [toKey]: toBucket };
-      storageHelper.setItem('dcaPlans', JSON.stringify(nextScoped));
       return nextScoped;
     });
 
@@ -4860,7 +4839,6 @@ export default function HomePage() {
       if (!prev[removeCode]) return prev;
       const next = { ...prev };
       delete next[removeCode];
-      storageHelper.setItem('transactions', JSON.stringify(next));
       return next;
     });
 
@@ -4909,7 +4887,6 @@ export default function HomePage() {
         nextScoped[scope] = nb;
       }
       if (!changed) return prev;
-      storageHelper.setItem('dcaPlans', JSON.stringify(nextScoped));
       return nextScoped;
     });
 
@@ -5053,7 +5030,9 @@ export default function HomePage() {
           delete next[c];
         }
       }
-      if (changed) storageHelper.setItem('transactions', JSON.stringify(next));
+      if (changed) {
+        // storageHelper.setItem handled by setTransactions
+      }
       return changed ? next : prev;
     });
 
@@ -5127,7 +5106,6 @@ export default function HomePage() {
         nextScoped[scope] = nb;
       }
       if (!changed) return prev;
-      storageHelper.setItem('dcaPlans', JSON.stringify(nextScoped));
       return nextScoped;
     });
 
@@ -5888,7 +5866,6 @@ export default function HomePage() {
       if (hasOwn(cloudData, 'transactions')) {
         const nextTransactions = isPlainObject(cloudData.transactions) ? cloudData.transactions : {};
         setTransactions(nextTransactions);
-        storageHelper.setItem('transactions', JSON.stringify(nextTransactions));
       } else {
         try {
           const localTx = storageStore.getItem('transactions', {});
@@ -5911,7 +5888,6 @@ export default function HomePage() {
         });
         if (!nextDcaPlans[DCA_SCOPE_GLOBAL]) nextDcaPlans[DCA_SCOPE_GLOBAL] = {};
         setDcaPlans(nextDcaPlans);
-        storageHelper.setItem('dcaPlans', JSON.stringify(nextDcaPlans));
       } else {
         try {
           const localDca = storageStore.getItem('dcaPlans', {});
@@ -6315,7 +6291,6 @@ export default function HomePage() {
                  mergedTransactions[code] = [...existing, ...newTxs].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
              });
              setTransactions(mergedTransactions);
-             storageHelper.setItem('transactions', JSON.stringify(mergedTransactions));
         }
 
         if (Array.isArray(data.pendingTrades)) {
@@ -6349,9 +6324,7 @@ export default function HomePage() {
             };
           });
           setDcaPlans(mergedDca);
-          storageHelper.setItem('dcaPlans', JSON.stringify(mergedDca));
-        }
-
+          }
         if (isPlainObject(data.customSettings)) {
           try {
             const currentCustomSettings = storageStore.getItem('customSettings', {});
@@ -7894,10 +7867,8 @@ export default function HomePage() {
                 const next = { ...scoped };
                 if (Object.keys(nextBucket).length === 0) delete next[scope];
                 else next[scope] = nextBucket;
-                storageHelper.setItem('dcaPlans', JSON.stringify(next));
                 return next;
-              });
-              setDcaModal({ open: false, fund: null });
+                });              setDcaModal({ open: false, fund: null });
               showToast('已重置定投数据', 'success');
             }}
             onConfirm={(config) => {
@@ -7920,10 +7891,8 @@ export default function HomePage() {
                   enabled: config.enabled !== false
                 };
                 const next = { ...scoped, [scope]: bucket };
-                storageHelper.setItem('dcaPlans', JSON.stringify(next));
                 return next;
-              });
-              setDcaModal({ open: false, fund: null });
+                });              setDcaModal({ open: false, fund: null });
               showToast('已保存定投计划', 'success');
             }}
           />

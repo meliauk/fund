@@ -73,6 +73,8 @@ export const useStorageStore = create((set, get) => ({
   holdings: {},
   groupHoldings: {},
   pendingTrades: [],
+  transactions: {},
+  dcaPlans: {},
 
   initFunds: () => {
     if (typeof window !== 'undefined') {
@@ -115,6 +117,18 @@ export const useStorageStore = create((set, get) => ({
   initPendingTrades: () => {
     if (typeof window !== 'undefined') {
       set({ pendingTrades: get().getItem('pendingTrades', []) });
+    }
+  },
+
+  initTransactions: () => {
+    if (typeof window !== 'undefined') {
+      set({ transactions: get().getItem('transactions', {}) });
+    }
+  },
+
+  initDcaPlans: () => {
+    if (typeof window !== 'undefined') {
+      set({ dcaPlans: get().getItem('dcaPlans', {}) });
     }
   },
 
@@ -188,6 +202,18 @@ export const useStorageStore = create((set, get) => ({
     const next = typeof nextPendingTrades === 'function' ? nextPendingTrades(get().pendingTrades) : nextPendingTrades;
     set({ pendingTrades: next });
     get().setItem('pendingTrades', JSON.stringify(next));
+  },
+
+  setTransactions: (nextTransactions) => {
+    const next = typeof nextTransactions === 'function' ? nextTransactions(get().transactions) : nextTransactions;
+    set({ transactions: next });
+    get().setItem('transactions', JSON.stringify(next));
+  },
+
+  setDcaPlans: (nextDcaPlans) => {
+    const next = typeof nextDcaPlans === 'function' ? nextDcaPlans(get().dcaPlans) : nextDcaPlans;
+    set({ dcaPlans: next });
+    get().setItem('dcaPlans', JSON.stringify(next));
   },
 
   /**
