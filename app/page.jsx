@@ -4356,43 +4356,21 @@ export default function HomePage() {
       console.log('刷新完成，成功获取', updated.length, '个基金数据');
       if (updated.length > 0) {
         setFunds(prev => {
-          const storedCodes = readStoredFundCodes();
-          const existingCodes =
-            storedCodes ?? new Set(prev.map((f) => f.code).filter(Boolean));
-          const merged = prev.filter((f) => existingCodes.has(f.code));
-          updated.forEach((u) => {
-            if (!u?.code || !existingCodes.has(u.code)) return;
-            const idx = merged.findIndex((f) => f.code === u.code);
-            if (idx > -1) merged[idx] = u;
-            else merged.push(u);
+          const merged = prev.map(f => {
+            const u = updated.find(x => x.code === f.code);
+            return u ? u : f;
           });
-          const deduped = dedupeByCode(merged);
-          const verifyCodes = readStoredFundCodes();
-          const finalFunds =
-            verifyCodes !== null ? deduped.filter((f) => f?.code && verifyCodes.has(f.code)) : deduped;
-          storageHelper.setItem('funds', JSON.stringify(finalFunds));
-          return finalFunds;
+          storageHelper.setItem('funds', JSON.stringify(merged));
+          return merged;
         });
         // 记录估值分时：每次刷新写入一条，新日期到来时自动清掉老日期数据
         const nextSeries = {};
         updated.forEach(u => {
-          if (!fundCodeStillInStorage(u?.code)) return;
           if (u?.code != null && !u.noValuation && Number.isFinite(Number(u.gsz))) {
-            // 请求返回与写入之间用户可能已删基金，写入前再读一次 localStorage
-            if (!fundCodeStillInStorage(u.code)) return;
             const val = recordValuation(u.code, { gsz: u.gsz, gztime: u.gztime });
             nextSeries[u.code] = val;
           }
         });
-        const seriesCodesOk = readStoredFundCodes();
-        if (seriesCodesOk !== null) {
-          Object.keys(nextSeries).forEach((code) => {
-            if (!seriesCodesOk.has(code)) {
-              clearFund(code);
-              delete nextSeries[code];
-            }
-          });
-        }
         if (Object.keys(nextSeries).length > 0) {
           setValuationSeries(prev => ({ ...prev, ...nextSeries }));
         }

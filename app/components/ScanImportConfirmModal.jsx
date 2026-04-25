@@ -172,7 +172,7 @@ export default function ScanImportConfirmModal({
         )}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
           <button className="button secondary" onClick={onClose}>取消</button>
-          <button className="button" onClick={handleConfirm} disabled={selectedScannedCodes.size === 0 || refreshing}>确认导入</button>
+          <button className="button" onClick={handleConfirm} disabled={selectedScannedCodes.size === 0}>确认导入</button>
         </div>
       </motion.div>
     </motion.div>
