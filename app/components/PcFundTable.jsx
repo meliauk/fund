@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/dialog';
 import { DragIcon, SettingsIcon, StarIcon, TrashIcon, ResetIcon, FolderPlusIcon, LinkIcon } from './Icons';
 import { fetchFundPeriodReturns, fetchRelatedSectors, fetchRelatedSectorLiveQuote } from '@/app/api/fund';
+import { storageStore } from '../stores';
 import MoveGroupModal from './MoveGroupModal';
 import { Badge } from '@/components/ui/badge';
 import { getTagThemeBadgeProps } from '@/app/components/AddTagDialog';
@@ -339,8 +340,7 @@ export default function PcFundTable({
   const getCustomSettingsWithMigration = () => {
     if (typeof window === 'undefined') return {};
     try {
-      const raw = window.localStorage.getItem('customSettings');
-      const parsed = raw ? JSON.parse(raw) : {};
+      const parsed = storageStore.getItem('customSettings') || {};
       if (!parsed || typeof parsed !== 'object') return {};
       if (parsed.pcTableColumnOrder != null || parsed.pcTableColumnVisibility != null || parsed.pcTableColumns != null || parsed.mobileTableColumnOrder != null || parsed.mobileTableColumnVisibility != null) {
         const all = {
@@ -357,7 +357,7 @@ export default function PcFundTable({
         delete parsed.mobileTableColumnOrder;
         delete parsed.mobileTableColumnVisibility;
         parsed.all = all;
-        window.localStorage.setItem('customSettings', JSON.stringify(parsed));
+        storageStore.setItem('customSettings', JSON.stringify(parsed));
       }
       return parsed;
     } catch {
@@ -457,15 +457,14 @@ export default function PcFundTable({
   const persistPcGroupConfig = (updates) => {
     if (typeof window === 'undefined') return;
     try {
-      const raw = window.localStorage.getItem('customSettings');
-      const parsed = raw ? JSON.parse(raw) : {};
+      const parsed = storageStore.getItem('customSettings') || {};
       const group = parsed[groupKey] && typeof parsed[groupKey] === 'object' ? { ...parsed[groupKey] } : {};
       if (updates.pcTableColumnOrder !== undefined) group.pcTableColumnOrder = updates.pcTableColumnOrder;
       if (updates.pcTableColumnVisibility !== undefined) group.pcTableColumnVisibility = updates.pcTableColumnVisibility;
       if (updates.pcTableColumns !== undefined) group.pcTableColumns = updates.pcTableColumns;
       if (updates.pcShowFullFundName !== undefined) group.pcShowFullFundName = updates.pcShowFullFundName;
       parsed[groupKey] = group;
-      window.localStorage.setItem('customSettings', JSON.stringify(parsed));
+      storageStore.setItem('customSettings', JSON.stringify(parsed));
       setConfigByGroup((prev) => ({ ...prev, [groupKey]: { ...prev[groupKey], ...updates } }));
       onCustomSettingsChange?.();
     } catch { }

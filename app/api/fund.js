@@ -2,6 +2,7 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import { isString } from 'lodash';
+import { storageStore } from '../stores';
 import { getQueryClient } from '../lib/get-query-client';
 import * as qk from '../lib/query-keys';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
@@ -611,7 +612,7 @@ function fundDebugEnabled() {
     // 仅开发环境允许输出调试日志（避免生产环境污染控制台）
     if (typeof process !== 'undefined' && process?.env?.NODE_ENV === 'production') return false;
     if (typeof window === 'undefined') return false;
-    const v = window?.localStorage?.getItem(RTF_FUND_DEBUG_LS_KEY);
+    const v = storageStore.getItem(RTF_FUND_DEBUG_LS_KEY);
     return v === '1' || v === 'true';
   } catch (e) {
     return false;

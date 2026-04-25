@@ -12,6 +12,7 @@ import { ChevronRightIcon } from 'lucide-react';
 import { SettingsIcon } from './Icons';
 import { cn } from '@/lib/utils';
 import MarketSettingModal from './MarketSettingModal';
+import { storageStore } from '../stores';
 
 /** 迷你走势：只展示当日分时数据，不支持时不展示 */
 function MiniTrendLine({ changePercent, code, className }) {
@@ -246,10 +247,9 @@ export default function MarketIndexAccordion({
     if (!indices.length || typeof window === 'undefined') return;
     if (hasInitializedSelectedCodes.current) return;
     try {
-      const stored = window.localStorage.getItem('marketIndexSelected');
+      const parsed = storageStore.getItem('marketIndexSelected');
       const availableCodes = new Set(indices.map((it) => it.code));
-      if (stored) {
-        const parsed = JSON.parse(stored);
+      if (parsed) {
         if (Array.isArray(parsed)) {
           const filtered = parsed.filter((c) => availableCodes.has(c));
           if (filtered.length) {
@@ -272,13 +272,12 @@ export default function MarketIndexAccordion({
     if (!selectedCodes.length) return;
     try {
       // 本地首选 key：独立存储，便于快速读取
-      window.localStorage.setItem('marketIndexSelected', JSON.stringify(selectedCodes));
+      storageStore.setItem('marketIndexSelected', JSON.stringify(selectedCodes));
 
       // 同步到 customSettings，便于云端同步
-      const raw = window.localStorage.getItem('customSettings');
-      const parsed = raw ? JSON.parse(raw) : {};
+      const parsed = storageStore.getItem('customSettings') || {};
       const next = parsed && typeof parsed === 'object' ? { ...parsed, marketIndexSelected: selectedCodes } : { marketIndexSelected: selectedCodes };
-      window.localStorage.setItem('customSettings', JSON.stringify(next));
+      storageStore.setItem('customSettings', JSON.stringify(next));
       onCustomSettingsChange?.();
     } catch {
       // ignore

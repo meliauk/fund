@@ -30,6 +30,7 @@ import MobileSettingModal from './MobileSettingModal';
 import MoveGroupModal from './MoveGroupModal';
 import { ArrowUpToLineIcon, CloseIcon, DragIcon, FolderPlusIcon, LinkIcon, PencilIcon, SettingsIcon, StarIcon, TrashIcon } from './Icons';
 import { fetchFundPeriodReturns, fetchRelatedSectors, fetchRelatedSectorLiveQuote } from '@/app/api/fund';
+import { storageStore } from '../stores';
 import { Badge } from '@/components/ui/badge';
 import { getTagThemeBadgeProps } from '@/app/components/AddTagDialog';
 import { cn } from '@/lib/utils';
@@ -485,8 +486,7 @@ export default function MobileFundTable({
   const getCustomSettingsWithMigration = () => {
     if (typeof window === 'undefined') return {};
     try {
-      const raw = window.localStorage.getItem('customSettings');
-      const parsed = raw ? JSON.parse(raw) : {};
+      const parsed = storageStore.getItem('customSettings') || {};
       if (!parsed || typeof parsed !== 'object') return {};
       if (parsed.pcTableColumnOrder != null || parsed.pcTableColumnVisibility != null || parsed.pcTableColumns != null || parsed.mobileTableColumnOrder != null || parsed.mobileTableColumnVisibility != null) {
         const all = {
@@ -503,7 +503,7 @@ export default function MobileFundTable({
         delete parsed.mobileTableColumnOrder;
         delete parsed.mobileTableColumnVisibility;
         parsed.all = all;
-        window.localStorage.setItem('customSettings', JSON.stringify(parsed));
+        storageStore.setItem('customSettings', JSON.stringify(parsed));
       }
       return parsed;
     } catch {
@@ -572,13 +572,12 @@ export default function MobileFundTable({
   const persistMobileGroupConfig = (updates) => {
     if (typeof window === 'undefined') return;
     try {
-      const raw = window.localStorage.getItem('customSettings');
-      const parsed = raw ? JSON.parse(raw) : {};
+      const parsed = storageStore.getItem('customSettings') || {};
       const group = parsed[groupKey] && typeof parsed[groupKey] === 'object' ? { ...parsed[groupKey] } : {};
       if (updates.mobileTableColumnOrder !== undefined) group.mobileTableColumnOrder = updates.mobileTableColumnOrder;
       if (updates.mobileTableColumnVisibility !== undefined) group.mobileTableColumnVisibility = updates.mobileTableColumnVisibility;
       parsed[groupKey] = group;
-      window.localStorage.setItem('customSettings', JSON.stringify(parsed));
+      storageStore.setItem('customSettings', JSON.stringify(parsed));
       setConfigByGroup((prev) => ({ ...prev, [groupKey]: { ...prev[groupKey], ...updates } }));
       onCustomSettingsChange?.();
     } catch {}
@@ -600,12 +599,11 @@ export default function MobileFundTable({
   const persistShowFullFundName = (show) => {
     if (typeof window === 'undefined') return;
     try {
-      const raw = window.localStorage.getItem('customSettings');
-      const parsed = raw ? JSON.parse(raw) : {};
+      const parsed = storageStore.getItem('customSettings') || {};
       const group = parsed[groupKey] && typeof parsed[groupKey] === 'object' ? { ...parsed[groupKey] } : {};
       group.mobileShowFullFundName = show;
       parsed[groupKey] = group;
-      window.localStorage.setItem('customSettings', JSON.stringify(parsed));
+      storageStore.setItem('customSettings', JSON.stringify(parsed));
       setConfigByGroup((prev) => ({
         ...prev,
         [groupKey]: { ...prev[groupKey], mobileShowFullFundName: show }
