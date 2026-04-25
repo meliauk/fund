@@ -144,8 +144,10 @@ export default function HomePage() {
     refreshMs, setRefreshMs,
     holdings, setHoldings,
     groupHoldings, setGroupHoldings,
+    pendingTrades, setPendingTrades,
     initCollapsed, initRefreshMs,
-    initHoldings, initGroupHoldings
+    initHoldings, initGroupHoldings,
+    initPendingTrades
   } = useStorageStore();
   /** 基金标签（独立 localStorage 键 `tags`）：{ id, name, theme, fundCodes: string[] }[] */
   const [fundTagRecords, setFundTagRecords] = useState([]);
@@ -505,7 +507,6 @@ export default function HomePage() {
     name: '',
     targetGroupId: null,
   });
-  const [pendingTrades, setPendingTrades] = useState([]); // [{ id, fundCode, share, date, ... }]
   const [transactions, setTransactions] = useState({}); // { [code]: [{ id, type, amount, share, price, date, timestamp }] }
   const [dcaPlans, setDcaPlans] = useState({}); // scoped: { __global__|groupId: { [code]: plan } }
   const [historyModal, setHistoryModal] = useState({ open: false, fund: null });
@@ -515,7 +516,7 @@ export default function HomePage() {
 
   const holdingsRef = useRef(null);
   const groupHoldingsRef = useRef(null);
-  const pendingTradesRef = useRef(pendingTrades);
+  const pendingTradesRef = useRef(null);
 
   useEffect(() => {
     holdingsRef.current = holdings;
@@ -1805,7 +1806,6 @@ export default function HomePage() {
           if (trade.fundCode !== code) return true;
           return gid ? trade.groupId !== gid : !trade.groupId;
         });
-        storageHelper.setItem('pendingTrades', JSON.stringify(next));
         return next;
       });
 
@@ -1926,7 +1926,6 @@ export default function HomePage() {
 
       setPendingTrades(prev => {
           const next = prev.filter(t => !processedIds.has(t.id));
-          storageHelper.setItem('pendingTrades', JSON.stringify(next));
           return next;
       });
 
@@ -2044,7 +2043,6 @@ export default function HomePage() {
       }));
 
       const next = [...list, ...copied];
-      storageHelper.setItem('pendingTrades', JSON.stringify(next));
       return next;
     });
 
@@ -2102,7 +2100,6 @@ export default function HomePage() {
 
         const next = [...pendingTrades, pending];
         setPendingTrades(next);
-        storageHelper.setItem('pendingTrades', JSON.stringify(next));
 
         // 如果该基金没有持仓数据，初始化持仓金额为 0
         const tabH = tradeGid ? (groupHoldings[tradeGid] || {}) : holdings;
@@ -3100,7 +3097,6 @@ export default function HomePage() {
 
     setPendingTrades(prev => {
       const merged = [...(prev || []), ...newPending];
-      storageHelper.setItem('pendingTrades', JSON.stringify(merged));
       return merged;
     });
 
@@ -3146,7 +3142,6 @@ export default function HomePage() {
     });
     setPendingTrades((prev) => {
       const nextP = prev.filter((t) => t.groupId !== id);
-      storageHelper.setItem('pendingTrades', JSON.stringify(nextP));
       return nextP;
     });
     try {
@@ -3193,9 +3188,6 @@ export default function HomePage() {
       });
       setPendingTrades((prev) => {
         const nextP = prev.filter((t) => !removedIds.includes(t.groupId));
-        if (nextP.length !== prev.length) {
-          storageHelper.setItem('pendingTrades', JSON.stringify(nextP));
-        }
         return nextP;
       });
       try {
@@ -3285,7 +3277,6 @@ export default function HomePage() {
       setPendingTrades((prev) => {
         const nextP = prev.filter((t) => !(codeSet.has(t.fundCode) && t.groupId === gid));
         if (nextP.length === prev.length) return prev;
-        storageHelper.setItem('pendingTrades', JSON.stringify(nextP));
         return nextP;
       });
 
@@ -3370,7 +3361,6 @@ export default function HomePage() {
     setPendingTrades((prev) => {
       const next = prev.filter((t) => !(t.fundCode === code && t.groupId === groupId));
       if (next.length === prev.length) return prev;
-      storageHelper.setItem('pendingTrades', JSON.stringify(next));
       return next;
     });
 
@@ -3439,7 +3429,6 @@ export default function HomePage() {
     setPendingTrades((prev) => {
       const next = prev.filter((t) => !(set.has(t.fundCode) && t.groupId === groupId));
       if (next.length === prev.length) return prev;
-      storageHelper.setItem('pendingTrades', JSON.stringify(next));
       return next;
     });
 
@@ -3585,8 +3574,8 @@ export default function HomePage() {
       initRefreshMs();
       initHoldings();
       initGroupHoldings();
-      try {        // 已登录用户：不在此处调用 refreshAll，等 fetchCloudConfig 完成后由 applyCloudConfig 统一刷新
-        let shouldRefreshFromLocal = true;
+      initPendingTrades();
+      try {        // 已登录用户：不在此处调用 refreshAll，等 fetchCloudConfig 完成后由 applyCloudConfig 统一刷新        let shouldRefreshFromLocal = true;
         if (isSupabaseConfigured) {
           const { data, error } = await supabase.auth.getSession();
           if (!cancelled && !error && data?.session?.user) {
@@ -4688,7 +4677,6 @@ export default function HomePage() {
         return rest;
       });
       if (!changed) return prev;
-      storageHelper.setItem('pendingTrades', JSON.stringify(next));
       return next;
     });
 
@@ -4864,7 +4852,6 @@ export default function HomePage() {
     // 同步删除待处理交易
     setPendingTrades(prev => {
       const next = prev.filter((trade) => trade?.fundCode !== removeCode);
-      storageHelper.setItem('pendingTrades', JSON.stringify(next));
       return next;
     });
 
@@ -5051,7 +5038,6 @@ export default function HomePage() {
     setPendingTrades((prev) => {
       const next = prev.filter((t) => !set.has(t?.fundCode));
       if (next.length === prev.length) return prev;
-      storageHelper.setItem('pendingTrades', JSON.stringify(next));
       return next;
     });
 
@@ -5892,7 +5878,6 @@ export default function HomePage() {
             })
           : [];
         setPendingTrades(nextPendingTrades);
-        storageHelper.setItem('pendingTrades', JSON.stringify(nextPendingTrades));
       } else {
         try {
           const localPending = storageStore.getItem('pendingTrades', []);
@@ -6352,7 +6337,6 @@ export default function HomePage() {
           });
           const mergedPending = Array.from(mergedPendingMap.values());
           setPendingTrades(mergedPending);
-          storageHelper.setItem('pendingTrades', JSON.stringify(mergedPending));
         }
 
         if (isPlainObject(data.dcaPlans)) {
@@ -7883,7 +7867,6 @@ export default function HomePage() {
             onDeletePending={(id) => {
                 setPendingTrades(prev => {
                     const next = prev.filter(t => t.id !== id);
-                    storageHelper.setItem('pendingTrades', JSON.stringify(next));
                     return next;
                 });
                 showToast('已撤销待处理交易', 'success');
@@ -7976,7 +7959,6 @@ export default function HomePage() {
             onDeletePending={(id) => {
                 setPendingTrades(prev => {
                     const next = prev.filter(t => t.id !== id);
-                    storageHelper.setItem('pendingTrades', JSON.stringify(next));
                     return next;
                 });
                 showToast('已撤销待处理交易', 'success');

@@ -72,6 +72,7 @@ export const useStorageStore = create((set, get) => ({
   refreshMs: 30000,
   holdings: {},
   groupHoldings: {},
+  pendingTrades: [],
 
   initFunds: () => {
     if (typeof window !== 'undefined') {
@@ -108,6 +109,12 @@ export const useStorageStore = create((set, get) => ({
   initGroupHoldings: () => {
     if (typeof window !== 'undefined') {
       set({ groupHoldings: get().getItem('groupHoldings', {}) });
+    }
+  },
+
+  initPendingTrades: () => {
+    if (typeof window !== 'undefined') {
+      set({ pendingTrades: get().getItem('pendingTrades', []) });
     }
   },
 
@@ -175,6 +182,12 @@ export const useStorageStore = create((set, get) => ({
     const next = typeof nextGroupHoldings === 'function' ? nextGroupHoldings(get().groupHoldings) : nextGroupHoldings;
     set({ groupHoldings: next });
     get().setItem('groupHoldings', JSON.stringify(next));
+  },
+
+  setPendingTrades: (nextPendingTrades) => {
+    const next = typeof nextPendingTrades === 'function' ? nextPendingTrades(get().pendingTrades) : nextPendingTrades;
+    set({ pendingTrades: next });
+    get().setItem('pendingTrades', JSON.stringify(next));
   },
 
   /**
