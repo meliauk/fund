@@ -70,6 +70,8 @@ export const useStorageStore = create((set, get) => ({
   collapsedTrends: new Set(),
   collapsedEarnings: new Set(),
   refreshMs: 30000,
+  holdings: {},
+  groupHoldings: {},
 
   initFunds: () => {
     if (typeof window !== 'undefined') {
@@ -94,6 +96,18 @@ export const useStorageStore = create((set, get) => ({
     if (typeof window !== 'undefined') {
       const savedMs = parseInt(get().getItem('refreshMs', 30000), 10);
       set({ refreshMs: Number.isFinite(savedMs) && savedMs >= 5000 ? savedMs : 30000 });
+    }
+  },
+
+  initHoldings: () => {
+    if (typeof window !== 'undefined') {
+      set({ holdings: get().getItem('holdings', {}) });
+    }
+  },
+
+  initGroupHoldings: () => {
+    if (typeof window !== 'undefined') {
+      set({ groupHoldings: get().getItem('groupHoldings', {}) });
     }
   },
 
@@ -149,6 +163,18 @@ export const useStorageStore = create((set, get) => ({
   setRefreshMs: (ms) => {
     set({ refreshMs: ms });
     get().setItem('refreshMs', String(ms));
+  },
+
+  setHoldings: (nextHoldings) => {
+    const next = typeof nextHoldings === 'function' ? nextHoldings(get().holdings) : nextHoldings;
+    set({ holdings: next });
+    get().setItem('holdings', JSON.stringify(next));
+  },
+
+  setGroupHoldings: (nextGroupHoldings) => {
+    const next = typeof nextGroupHoldings === 'function' ? nextGroupHoldings(get().groupHoldings) : nextGroupHoldings;
+    set({ groupHoldings: next });
+    get().setItem('groupHoldings', JSON.stringify(next));
   },
 
   /**
