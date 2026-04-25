@@ -3114,8 +3114,7 @@ export default function HomePage() {
 
         const last = plan.lastDate ? toTz(plan.lastDate).startOf('day') : null;
 
-        let anchor = last ? last : first.clone().subtract(1, 'day');
-        let current = anchor;
+        let current = last ? last.clone() : first.clone();
         let lastGenerated = null;
 
         const stepOnce = () => {
@@ -3126,33 +3125,36 @@ export default function HomePage() {
           return current.add(1, 'day');
         };
 
-        while (true) {
+        if (last) {
           current = stepOnce();
+        }
+
+        while (true) {
           if (current.isAfter(today, 'day')) break;
-          if (current.isBefore(first, 'day')) continue;
 
-          if (!isDateTradingDay(current)) continue;
+          if (!current.isBefore(first, 'day') && isDateTradingDay(current)) {
+            const dateStr = current.format('YYYY-MM-DD');
 
-          const dateStr = current.format('YYYY-MM-DD');
-
-          const pending = {
-            id: `dca_${scopeKey}_${code}_${dateStr}_${Date.now()}`,
-            fundCode: code,
-            fundName: (funds.find(f => f.code === code) || {}).name,
-            type: 'buy',
-            share: null,
-            amount,
-            feeRate,
-            feeMode: undefined,
-            feeValue: undefined,
-            date: dateStr,
-            isAfter3pm: false,
-            isDca: true,
-            timestamp: Date.now(),
-            ...(tradeGid ? { groupId: tradeGid } : {}),
-          };
-          newPending.push(pending);
-          lastGenerated = current;
+            const pending = {
+              id: `dca_${scopeKey}_${code}_${dateStr}_${Date.now()}`,
+              fundCode: code,
+              fundName: (funds.find(f => f.code === code) || {}).name,
+              type: 'buy',
+              share: null,
+              amount,
+              feeRate,
+              feeMode: undefined,
+              feeValue: undefined,
+              date: dateStr,
+              isAfter3pm: false,
+              isDca: true,
+              timestamp: Date.now(),
+              ...(tradeGid ? { groupId: tradeGid } : {}),
+            };
+            newPending.push(pending);
+            lastGenerated = current;
+          }
+          current = stepOnce();
         }
 
         if (lastGenerated) {
