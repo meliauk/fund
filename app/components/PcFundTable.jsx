@@ -38,6 +38,7 @@ import {
 import { DragIcon, SettingsIcon, StarIcon, TrashIcon, ResetIcon, FolderPlusIcon, LinkIcon } from './Icons';
 import { fetchFundPeriodReturns, fetchRelatedSectors, fetchRelatedSectorLiveQuote } from '@/app/api/fund';
 import { storageStore } from '../stores';
+import { asyncPool } from '@/app/lib/asyncHelper';
 import MoveGroupModal from './MoveGroupModal';
 import { Badge } from '@/components/ui/badge';
 import { getTagThemeBadgeProps } from '@/app/components/AddTagDialog';
@@ -619,21 +620,6 @@ export default function PcFundTable({
     setSectorQuoteByLabel({});
   }, [sectorAuthSegment]);
 
-  const runWithConcurrency = async (items, limit, worker) => {
-    const queue = [...items];
-    const results = [];
-    const runners = Array.from({ length: Math.max(1, limit) }, async () => {
-      while (queue.length) {
-        const item = queue.shift();
-        if (item == null) continue;
-
-        results.push(await worker(item));
-      }
-    });
-    await Promise.all(runners);
-    return results;
-  };
-
   useEffect(() => {
     if (!relatedSectorEnabled) return;
     if (dataCodes.length === 0) return;
@@ -644,7 +630,7 @@ export default function PcFundTable({
     let cancelled = false;
     (async () => {
       const batch = {};
-      await runWithConcurrency(missing, 4, async (code) => {
+      await asyncPool(4, missing, async (code) => {
         const value = await fetchRelatedSector(code);
         relatedSectorCacheRef.current.set(code, value);
         batch[code] = value;
@@ -680,7 +666,7 @@ export default function PcFundTable({
     let cancelled = false;
     (async () => {
       const batch = {};
-      await runWithConcurrency([...labels], 4, async (label) => {
+      await asyncPool(4, [...labels], async (label) => {
         const quote = await fetchRelatedSectorLiveQuote(label);
         batch[label] = quote;
       });
@@ -760,7 +746,7 @@ export default function PcFundTable({
     let cancelled = false;
     (async () => {
       const batch = {};
-      await runWithConcurrency(missing, 4, async (code) => {
+      await asyncPool(4, missing, async (code) => {
         const value = await fetchFundPeriodReturns(code);
         periodReturnsCacheRef.current.set(code, value);
         batch[code] = value;
