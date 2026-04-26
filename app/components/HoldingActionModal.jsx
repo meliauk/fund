@@ -73,25 +73,37 @@ export default function HoldingActionModal({ fund, onClose, onAction, hasHistory
 
         <div className="grid" style={{ gap: 12 }}>
           <button
-            className="button col-4"
+            className="button col-6"
             onClick={() => onAction('buy')}
             style={{ background: 'rgba(34, 211, 238, 0.1)', border: '1px solid var(--primary)', color: 'var(--primary)', fontSize: 14 }}
           >
             加仓
           </button>
           <button
-            className="button col-4"
+            className="button col-6"
             onClick={() => onAction('sell')}
             style={{ background: 'rgba(248, 113, 113, 0.1)', border: '1px solid var(--danger)', color: 'var(--danger)', fontSize: 14 }}
           >
             减仓
           </button>
           <button
-            className="button col-4 dca-btn"
+            className="button col-6 dca-btn"
             onClick={() => onAction('dca')}
             style={{ fontSize: 14 }}
           >
             定投
+          </button>
+          <button
+            className="button col-6 convert-btn"
+            onClick={() => onAction('convert')}
+            style={{
+              background: 'rgba(168, 85, 247, 0.12)',
+              border: '1px solid rgba(168, 85, 247, 0.75)',
+              color: 'rgba(168, 85, 247, 0.75)',
+              fontSize: 14,
+            }}
+          >
+            转换
           </button>
           <button className="button col-12" onClick={() => onAction('edit')} style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text)' }}>
             编辑持仓

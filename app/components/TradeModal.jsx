@@ -430,7 +430,7 @@ export default function TradeModal({ type, fund, holding, onClose, onConfirm, pe
                       <div style={{ pointerEvents: loadingBuyMeta ? 'none' : 'auto', opacity: loadingBuyMeta ? 0.55 : 1 }}>
                         <div className="form-group" style={{ marginBottom: 16 }}>
                           <label className="muted" style={{ display: 'block', marginBottom: 8, fontSize: '14px' }}>
-                            加仓金额 () <span style={{ color: 'var(--danger)' }}>*</span>
+                            加仓金额 <span style={{ color: 'var(--danger)' }}>*</span>
                           </label>
                           <div
                             style={{

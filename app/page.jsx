@@ -72,6 +72,8 @@ import UpdatePromptModal from "./components/UpdatePromptModal";
 import RefreshButton from "./components/RefreshButton";
 import WeChatModal from "./components/WeChatModal";
 import DcaModal from "./components/DcaModal";
+import FundConvertModal from "./components/FundConvertModal";
+import SelectFundSingleModal from "./components/SelectFundSingleModal";
 import MarketIndexAccordion from "./components/MarketIndexAccordion";
 import SortSettingModal from "./components/SortSettingModal";
 import githubImg from "./assets/github.svg";
@@ -499,6 +501,8 @@ export default function HomePage() {
   const [holdingModal, setHoldingModal] = useState({ open: false, fund: null });
   const [actionModal, setActionModal] = useState({ open: false, fund: null });
   const [tradeModal, setTradeModal] = useState({ open: false, fund: null, type: 'buy' }); // type: 'buy' | 'sell'
+  const [convertModal, setConvertModal] = useState({ open: false, fund: null });
+  const [selectFundSingleModal, setSelectFundSingleModal] = useState({ open: false, excludeCodes: [], initialSelectedCode: '' });
   const [dcaModal, setDcaModal] = useState({ open: false, fund: null });
   const [clearConfirm, setClearConfirm] = useState(null); // { fund }
   const [donateOpen, setDonateOpen] = useState(false);
@@ -1762,6 +1766,8 @@ export default function HomePage() {
       setHistoryModal({ open: true, fund });
     } else if (type === 'dca') {
       setDcaModal({ open: true, fund });
+    } else if (type === 'convert') {
+      setConvertModal({ open: true, fund });
     }
   };
 
@@ -1888,12 +1894,18 @@ export default function HomePage() {
              tradeShare = share;
              tradeAmount = trade.amount;
         } else {
-             newShare = Math.max(0, current.share - trade.share);
+             const sellShare =
+               (trade.share != null && Number.isFinite(Number(trade.share)) && Number(trade.share) > 0)
+                 ? Number(trade.share)
+                 : ((trade.amount != null && Number.isFinite(Number(trade.amount)) && Number(trade.amount) > 0)
+                     ? (Number(trade.amount) / result.value)
+                     : 0);
+             newShare = Math.max(0, current.share - sellShare);
              newCost = current.cost;
              if (newShare === 0) newCost = 0;
 
-             tradeShare = trade.share;
-             tradeAmount = trade.share * result.value;
+             tradeShare = sellShare;
+             tradeAmount = sellShare * result.value;
         }
 
         writeCurrent(trade.fundCode, tradeGid, newShare, newCost, {
@@ -7872,6 +7884,130 @@ export default function HomePage() {
                 return next;
                 });              setDcaModal({ open: false, fund: null });
               showToast('已保存定投计划', 'success');
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {convertModal.open && (
+          <FundConvertModal
+            fund={convertModal.fund}
+            allFunds={funds}
+            nestedModalOpen={selectFundSingleModal.open}
+            maxOutAmount={(() => {
+              const f = convertModal.fund;
+              const code = f?.code;
+              if (!code) return 0;
+              const holding = holdingsForTabWithLinked?.[code];
+              const share = Number(holding?.share) || 0;
+              const nav =
+                Number(f?.dwjz) ||
+                Number(f?.gsz) ||
+                Number(f?.estGsz) ||
+                0;
+              if (!share || !nav) return 0;
+              return share * nav;
+            })()}
+            onClose={() => setConvertModal({ open: false, fund: null })}
+            onPickInFund={({ excludeCodes, initialSelectedCode }) => {
+              return new Promise((resolve) => {
+                // 打开单选选基弹框，并把 resolve 暂存到状态闭包中处理
+                setSelectFundSingleModal({
+                  open: true,
+                  excludeCodes: excludeCodes || [],
+                  initialSelectedCode: initialSelectedCode || '',
+                  _resolve: resolve,
+                });
+              });
+            }}
+            onConfirm={(payload) => {
+              const tradeGid = activeGroupId || null;
+              const nowTs = Date.now();
+
+              const outPending = {
+                id: uuidv4(),
+                fundCode: payload.outFundCode,
+                fundName: payload.outFundName,
+                type: 'sell',
+                share: null,
+                amount: payload.outAmount,
+                feeRate: 0,
+                feeMode: 'none',
+                feeValue: 0,
+                date: payload.date,
+                isAfter3pm: false,
+                isDca: false,
+                timestamp: nowTs,
+                ...(tradeGid ? { groupId: tradeGid } : {}),
+              };
+
+              const inPending = {
+                id: uuidv4(),
+                fundCode: payload.inFundCode,
+                fundName: payload.inFundName,
+                type: 'buy',
+                share: null,
+                amount: payload.inAmount,
+                feeRate: 0,
+                feeMode: 'none',
+                feeValue: 0,
+                date: payload.date,
+                isAfter3pm: false,
+                isDca: false,
+                timestamp: nowTs + 1,
+                ...(tradeGid ? { groupId: tradeGid } : {}),
+              };
+
+              setPendingTrades((prev) => [...prev, outPending, inPending]);
+
+              // 如果转入基金在当前作用域没有持仓数据，初始化为 0，避免后续展示/计算缺失
+              const ensureHolding = (code) => {
+                if (!code) return;
+                if (!tradeGid) {
+                  setHoldings((prev) => {
+                    if (prev?.[code]) return prev;
+                    return { ...(prev || {}), [code]: { share: 0, cost: 0 } };
+                  });
+                } else {
+                  setGroupHoldings((prev) => {
+                    const next = { ...(prev || {}) };
+                    const bucket = { ...(next[tradeGid] || {}) };
+                    if (bucket[code]) return prev;
+                    bucket[code] = { share: 0, cost: 0 };
+                    next[tradeGid] = bucket;
+                    return next;
+                  });
+                }
+              };
+              ensureHolding(payload.inFundCode);
+
+              setConvertModal({ open: false, fund: null });
+              showToast('已加入待处理队列（转换）', 'info');
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {selectFundSingleModal.open && (
+          <SelectFundSingleModal
+            title="选择转入基金"
+            allFunds={(funds || []).filter((f) => f?.code && f.code !== convertModal.fund?.code)}
+            excludeCodes={selectFundSingleModal.excludeCodes}
+            initialSelectedCode={selectFundSingleModal.initialSelectedCode}
+            onClose={() => {
+              // 关闭且不选择：resolve null
+              if (typeof selectFundSingleModal._resolve === 'function') {
+                selectFundSingleModal._resolve(null);
+              }
+              setSelectFundSingleModal({ open: false, excludeCodes: [], initialSelectedCode: '' });
+            }}
+            onConfirm={(picked) => {
+              if (typeof selectFundSingleModal._resolve === 'function') {
+                selectFundSingleModal._resolve(picked);
+              }
+              setSelectFundSingleModal({ open: false, excludeCodes: [], initialSelectedCode: '' });
             }}
           />
         )}

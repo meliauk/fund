@@ -70,6 +70,7 @@ real-time-fund/
 - **Static export** — `output: 'export'` in next.config.js. No server-side runtime.
 - **JSONP + script injection** — all external API calls bypass CORS via `<script>` tags, not fetch().
 - **localStorage-first** — all user data stored locally; Supabase sync is optional/secondary.
+- **Unified Data Access** — **Strict Requirement**: ALL `localStorage` reads and writes MUST go through `storageStore` (or `useStorageStore` in React). Never use `window.localStorage` directly for business data to ensure state synchronization, cloud sync triggering, and data integrity (e.g., automatic JSON parsing/stringifying).
 - **Monolithic page.jsx** — entire app state and logic in one file (~3000+ lines). No state management library.
 - **Dual responsive layouts** — `PcFundTable` and `MobileFundTable` switch at 640px breakpoint.
 - **shadcn/ui conventions** — new-york style, CSS variables enabled, Lucide icons, path aliases (`@/components`, `@/lib/utils`).
