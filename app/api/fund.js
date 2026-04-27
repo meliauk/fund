@@ -256,6 +256,7 @@ export const fetchSectorFlowKline = async (secid) => {
 
     // f52:主力净流入, f53:小单净流入, f54:中单净流入, f55:大单净流入, f56:超大单净流入
     return {
+      //格式2026-04-27 14:49
       time: parts[0],
       mainFlow: parseFloat(parts[1]) || 0,      // 主力净流入
       smallFlow: parseFloat(parts[2]) || 0,     // 小单净流入
