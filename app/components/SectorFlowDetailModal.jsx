@@ -187,7 +187,7 @@ export default function SectorFlowDetailModal({
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent
         className="glass card"
-        style={{ maxWidth: '480px', maxHeight: '80vh', overflow: 'hidden' }}
+        style={{ maxWidth: '90vh', maxHeight: '90vh', overflow: 'hidden' }}
         showCloseButton={false}
       >
         <DialogHeader>
