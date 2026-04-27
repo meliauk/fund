@@ -255,16 +255,13 @@ export const fetchSectorFlowKline = async (secid) => {
     if (parts.length < 6) return null;
 
     // f52:主力净流入, f53:小单净流入, f54:中单净流入, f55:大单净流入, f56:超大单净流入
-    // 注意：有些接口返回5个字段，有些返回6个
-    const superLargeFlow = parts.length >= 7 ? parseFloat(parts[6]) || 0 : 0;
-
     return {
       time: parts[0],
       mainFlow: parseFloat(parts[1]) || 0,      // 主力净流入
       smallFlow: parseFloat(parts[2]) || 0,     // 小单净流入
       mediumFlow: parseFloat(parts[3]) || 0,    // 中单净流入
       largeFlow: parseFloat(parts[4]) || 0,     // 大单净流入
-      superLargeFlow: superLargeFlow             // 超大单净流入（可能为0）
+      superLargeFlow: parseFloat(parts[5]) || 0,             // 超大单净流入（可能为0）
     };
   } catch (e) {
     console.error('获取板块资金流向失败:', e);
