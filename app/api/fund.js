@@ -219,6 +219,58 @@ export const fetchSectorDetail = async (secid) => {
   }
 };
 
+/**
+ * 获取板块资金流向K线数据
+ * @param {string} secid - 板块secid，如 "90.BK1128"
+ * @returns {Promise<{time: string, mainFlow: number, smallFlow: number, mediumFlow: number, largeFlow: number, superLargeFlow: number}|null>}
+ */
+export const fetchSectorFlowKline = async (secid) => {
+  const timestamp = Date.now();
+  const url = `https://push2.eastmoney.com/api/qt/stock/fflow/kline/get?lmt=1&klt=1&secid=${secid}&fields1=f1,f2,f3,f7&fields2=f51,f52,f53,f54,f55,f56&ut=fa5fd1943c7b386f172d6893dbfba10b&_=${timestamp}`;
+
+  try {
+    const res = await fetch(url);
+    const text = await res.text();
+
+    // 解析响应（可能是 JSON 或 JSONP）
+    let json;
+    try {
+      // 先尝试直接解析 JSON
+      json = JSON.parse(text);
+    } catch {
+      // 如果不是纯JSON，尝试JSONP格式
+      const match = text.match(/\(({.*})\)/);
+      if (!match) return null;
+      json = JSON.parse(match[1]);
+    }
+
+    if (!json.data?.klines?.length) return null;
+
+    // 取最新的一条数据
+    const latest = json.data.klines[json.data.klines.length - 1];
+    const parts = latest.split(',');
+
+    // 检查数据长度：至少有 6 个字段（时间+5个资金流）
+    if (parts.length < 6) return null;
+
+    // f52:主力净流入, f53:小单净流入, f54:中单净流入, f55:大单净流入, f56:超大单净流入
+    // 注意：有些接口返回5个字段，有些返回6个
+    const superLargeFlow = parts.length >= 7 ? parseFloat(parts[6]) || 0 : 0;
+
+    return {
+      time: parts[0],
+      mainFlow: parseFloat(parts[1]) || 0,      // 主力净流入
+      smallFlow: parseFloat(parts[2]) || 0,     // 小单净流入
+      mediumFlow: parseFloat(parts[3]) || 0,    // 中单净流入
+      largeFlow: parseFloat(parts[4]) || 0,     // 大单净流入
+      superLargeFlow: superLargeFlow             // 超大单净流入（可能为0）
+    };
+  } catch (e) {
+    console.error('获取板块资金流向失败:', e);
+    return null;
+  }
+};
+
 function normalizeEastmoneyScriptUrl(url) {
   let key = url;
   try {

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Plus, X, Search, Wallet } from 'lucide-react';
-import { fetchSectorDetail, searchSectorsByRelatedSector } from '../api/fund';
+import { fetchSectorFlowKline, searchSectorsByRelatedSector } from '../api/fund';
 
 export default function SectorFlowModal({
   open,
@@ -40,6 +40,7 @@ export default function SectorFlowModal({
 
       if (results.length > 0) {
         const mappedResults = results
+          .filter(item => item.secid != null)
           .map(item => ({
             name: item.related_sector,
             secid: item.secid,
@@ -75,8 +76,15 @@ export default function SectorFlowModal({
 
   const handleAdd = async (sector) => {
     try {
-      const data = await fetchSectorDetail(sector.secid);
-      onAddSector(data ? { ...sector, ...data } : sector);
+      // 使用 fetchSectorFlowKline 获取准确的资金流向数据
+      const flowData = await fetchSectorFlowKline(sector.secid);
+      onAddSector({
+        ...sector,
+        // 使用 mainFlow 作为 fundFlow（主力净流入）
+        fundFlow: flowData?.mainFlow || 0,
+        // 保留其他可能的数据
+        change: 0 // 涨跌幅需要另外获取
+      });
     } catch {
       onAddSector(sector);
     }

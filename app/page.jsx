@@ -5598,12 +5598,8 @@ export default function HomePage() {
   // 板块操作函数
   const handleAddSector = async (sector) => {
     if (sectors.some(s => s.name === sector.name)) return;
-    try {
-      const data = await fetchSectorDetail(sector.secid);
-      setSectors(prev => [...prev, data ? { ...sector, ...data } : sector]);
-    } catch {
-      setSectors(prev => [...prev, sector]);
-    }
+    // 直接使用传入的 sector 数据（已包含 fundFlow 等字段）
+    setSectors(prev => [...prev, sector]);
   };
 
   const handleRemoveSector = (name) => {

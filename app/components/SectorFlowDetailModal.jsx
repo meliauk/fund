@@ -10,23 +10,53 @@ const fetchSectorFlowKline = async (secid) => {
   const url = `https://push2.eastmoney.com/api/qt/stock/fflow/kline/get?lmt=0&klt=1&secid=${secid}&fields1=f1,f2,f3,f7&fields2=f51,f52,f53,f54,f55,f56&ut=fa5fd1943c7b386f172d6893dbfba10b&_=${timestamp}`;
   
   try {
+    console.log('[SectorFlowDetailModal] 请求URL:', url);
     const res = await fetch(url);
     const text = await res.text();
+    console.log('[SectorFlowDetailModal] 返回数据长度:', text.length);
+    console.log('[SectorFlowDetailModal] 返回数据前200字符:', text.substring(0, 200));
     
-    // 解析 JSONP 响应
-    const match = text.match(/\(({.*})\)/);
-    if (!match) return null;
+    // 解析响应（可能是 JSON 或 JSONP）
+    let json;
+    try {
+      // 先尝试直接解析 JSON
+      json = JSON.parse(text);
+      console.log('[SectorFlowDetailModal] 直接解析JSON成功');
+    } catch {
+      // 如果不是纯JSON，尝试JSONP格式
+      const match = text.match(/\(({.*})\)/);
+      if (!match) {
+        console.log('[SectorFlowDetailModal] JSON/JSONP解析失败');
+        return null;
+      }
+      json = JSON.parse(match[1]);
+      console.log('[SectorFlowDetailModal] JSONP解析成功');
+    }
     
-    const json = JSON.parse(match[1]);
+    console.log('[SectorFlowDetailModal] 解析后的JSON:', json);
+    console.log('[SectorFlowDetailModal] klines数量:', json.data?.klines?.length);
+    
     if (!json.data?.klines?.length) return null;
     
     // 取最新的一条数据
     const latest = json.data.klines[json.data.klines.length - 1];
     const parts = latest.split(',');
     
-    if (parts.length < 6) return null;
+    // 检查数据长度：至少有 6 个字段（时间+5个资金流）
+    if (parts.length < 6) {
+      console.log('[SectorFlowDetailModal] 数据字段不足:', parts.length, '期望至少6个');
+      return null;
+    }
     
     // f52:主力净流入, f53:小单净流入, f54:中单净流入, f55:大单净流入, f56:超大单净流入
+    // klines中每一行字段,分割	含义
+    // f51	时间（格式：2026-04-23 09:30）
+    // f52	主力净流入（元）
+    // f53	小单净流入（元）
+    // f54	中单净流入（元）
+    // f55	大单净流入（元）
+    // f56	超大单净流入（元）
+
     return {
       time: parts[0],
       mainFlow: parseFloat(parts[1]) || 0,      // 主力净流入
