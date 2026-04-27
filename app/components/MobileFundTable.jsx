@@ -28,6 +28,7 @@ import FitText from './FitText';
 import MobileFundCardDrawer from './MobileFundCardDrawer';
 import MobileSettingModal from './MobileSettingModal';
 import MoveGroupModal from './MoveGroupModal';
+import SuccessModal from './SuccessModal';
 import { ArrowUpToLineIcon, CloseIcon, DragIcon, FolderPlusIcon, LinkIcon, PencilIcon, SettingsIcon, StarIcon, TrashIcon } from './Icons';
 import { fetchFundPeriodReturns, fetchRelatedSectors, fetchRelatedSectorLiveQuote } from '@/app/api/fund';
 import { storageStore } from '../stores';
@@ -483,6 +484,29 @@ export default function MobileFundTable({
   };
 
   const groupKey = currentTab ?? 'all';
+  const currentGroupName = useMemo(() => {
+    if (groupKey === 'all') return '全部';
+    if (groupKey === 'fav') return '自选';
+    return groups.find((g) => g?.id === groupKey)?.name || '当前';
+  }, [groupKey, groups]);
+  const settingSyncOptions = useMemo(() => {
+    const baseOptions = [
+      { id: 'all', name: '全部', description: '全部分组' },
+      { id: 'fav', name: '自选', description: '自选分组' },
+      ...(Array.isArray(groups) ? groups : []).map((group) => ({
+        id: group?.id,
+        name: group?.name || '未命名',
+        description: '自定义分组',
+      })),
+    ];
+    const seen = new Set();
+    return baseOptions.filter((item) => {
+      const id = String(item?.id ?? '').trim();
+      if (!id || id === groupKey || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  }, [groupKey, groups]);
 
   const getCustomSettingsWithMigration = () => {
     if (typeof window === 'undefined') return {};
@@ -617,7 +641,41 @@ export default function MobileFundTable({
     persistShowFullFundName(show);
   };
 
+  const handleSyncMobileSettings = (targetIds = []) => {
+    if (!targetIds.length || typeof window === 'undefined') return false;
+    try {
+      const parsed = storageStore.getItem('customSettings') || {};
+      const payload = {
+        mobileTableColumnOrder: [...mobileColumnOrder],
+        mobileTableColumnVisibility: { ...mobileColumnVisibility },
+        mobileShowFullFundName: !!showFullFundName,
+      };
+      const targetUpdates = {};
+      targetIds.forEach((targetId) => {
+        if (!targetId || targetId === groupKey) return;
+        const group = parsed[targetId] && typeof parsed[targetId] === 'object' ? { ...parsed[targetId] } : {};
+        parsed[targetId] = { ...group, ...payload };
+        targetUpdates[targetId] = payload;
+      });
+      const syncedCount = Object.keys(targetUpdates).length;
+      if (syncedCount === 0) return false;
+      storageStore.setItem('customSettings', JSON.stringify(parsed));
+      setConfigByGroup((prev) => {
+        const next = { ...prev };
+        Object.entries(targetUpdates).forEach(([targetId, updates]) => {
+          next[targetId] = { ...next[targetId], ...updates };
+        });
+        return next;
+      });
+      onCustomSettingsChange?.();
+      return syncedCount;
+    } catch {
+      return false;
+    }
+  };
+
   const [settingModalOpen, setSettingModalOpen] = useState(false);
+  const [syncSuccessOpen, setSyncSuccessOpen] = useState(false);
 
   useEffect(() => {
     onMobileSettingModalOpenChange?.(settingModalOpen);
@@ -1018,7 +1076,7 @@ export default function MobileFundTable({
     const holdingLocked =
       (currentTab === 'all' || currentTab === 'fav') &&
       !!original.isHoldingLinked;
-    const holdingLockedTitle = '持仓来自自定义分组汇总，无法在「全部/自选」设置持仓金额';
+    const holdingLinkedTitle = '持仓来自自定义分组汇总，点击选择分组后操作';
 
     if (isEditMode) {
       return (
@@ -1183,19 +1241,17 @@ export default function MobileFundTable({
           {holdingAmountDisplay ? (
             <span
               className="muted code-text"
-              role={holdingLocked ? undefined : 'button'}
-              tabIndex={holdingLocked ? -1 : 0}
-              title={holdingLocked ? holdingLockedTitle : '点击设置持仓'}
-              style={{ cursor: holdingLocked ? 'not-allowed' : 'pointer' }}
+              role="button"
+              tabIndex={0}
+              title={holdingLocked ? holdingLinkedTitle : '点击设置持仓'}
+              style={{ cursor: 'pointer' }}
               onClick={(e) => {
                 e.stopPropagation?.();
-                if (holdingLocked) return;
                 onHoldingAmountClickRef.current?.(original, { hasHolding: true });
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  if (holdingLocked) return;
                   onHoldingAmountClickRef.current?.(original, { hasHolding: true });
                 }
               }}
@@ -1207,19 +1263,17 @@ export default function MobileFundTable({
           ) : code ? (
             <span
               className="muted code-text"
-              role={holdingLocked ? undefined : 'button'}
-              tabIndex={holdingLocked ? -1 : 0}
-              title={holdingLocked ? holdingLockedTitle : '设置持仓'}
-              style={{ cursor: holdingLocked ? 'not-allowed' : 'pointer' }}
+              role="button"
+              tabIndex={0}
+              title={holdingLocked ? holdingLinkedTitle : '设置持仓'}
+              style={{ cursor: 'pointer' }}
               onClick={(e) => {
                 e.stopPropagation?.();
-                if (holdingLocked) return;
                 onHoldingAmountClickRef.current?.(original, { hasHolding: false });
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  if (holdingLocked) return;
                   onHoldingAmountClickRef.current?.(original, { hasHolding: false });
                 }
               }}
@@ -1454,12 +1508,7 @@ export default function MobileFundTable({
           const original = info.row.original || {};
           const code = original.code;
           const value = (code && (relatedSectorByCode?.[code] ?? relatedSectorCacheRef.current.get(code))) || '';
-          // 关联板块为空时，显示基金标签
-          const fundTags = Array.isArray(original.fundTags) ? original.fundTags : [];
-          const tagsText = fundTags.length > 0
-            ? fundTags.map(t => t && typeof t === 'object' && t.name != null ? String(t.name).trim() : String(t).trim()).filter(Boolean).join(', ')
-            : '';
-          const display = value || tagsText || '—';
+          const display = value || '—';
           const labelKey = value ? String(value).trim() : '';
           const quote = labelKey ? sectorQuoteByLabel?.[labelKey] : null;
           const nameFromQuote = quote?.name != null ? String(quote.name).trim() : '';
@@ -2195,7 +2244,23 @@ export default function MobileFundTable({
             onResetColumnVisibility={handleResetMobileColumnVisibility}
             showFullFundName={showFullFundName}
             onToggleShowFullFundName={handleToggleShowFullFundName}
+            syncOptions={settingSyncOptions}
+            currentGroupName={currentGroupName}
+            onSyncSettings={handleSyncMobileSettings}
+            onSyncSuccess={() => {
+              window.setTimeout(() => setSyncSuccessOpen(true), 0);
+            }}
           />
+        )}
+
+        {syncSuccessOpen && typeof document !== 'undefined' && ReactDOM.createPortal(
+          <SuccessModal
+            message="同步成功"
+            onClose={() => setSyncSuccessOpen(false)}
+            overlayStyle={{ zIndex: 10004 }}
+            cardStyle={{ maxWidth: '420px', width: '90vw', zIndex: 10005 }}
+          />,
+          document.body,
         )}
 
         <MobileFundCardDrawer

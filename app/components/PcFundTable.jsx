@@ -126,8 +126,7 @@ function SortableRow({ row, children, isTableDragging, disabled, enableAnimation
 
   return (
     <SortableRowContext.Provider value={contextValue}>
-      {/* 禁用动画以避免抖动问题 */}
-      {false ? (
+      {enableAnimation ? (
         <motion.div
           ref={setNodeRef}
           className="table-row-wrapper"
@@ -251,6 +250,29 @@ export default function PcFundTable({
     setActiveId(null);
   };
   const groupKey = currentTab ?? 'all';
+  const currentGroupName = useMemo(() => {
+    if (groupKey === 'all') return '全部';
+    if (groupKey === 'fav') return '自选';
+    return groups.find((g) => g?.id === groupKey)?.name || '当前';
+  }, [groupKey, groups]);
+  const settingSyncOptions = useMemo(() => {
+    const baseOptions = [
+      { id: 'all', name: '全部', description: '全部分组' },
+      { id: 'fav', name: '自选', description: '自选分组' },
+      ...(Array.isArray(groups) ? groups : []).map((group) => ({
+        id: group?.id,
+        name: group?.name || '未命名',
+        description: '自定义分组',
+      })),
+    ];
+    const seen = new Set();
+    return baseOptions.filter((item) => {
+      const id = String(item?.id ?? '').trim();
+      if (!id || id === groupKey || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  }, [groupKey, groups]);
 
   const isGroupTab = currentTab && currentTab !== 'all' && currentTab !== 'fav';
   // 批量删除：之前仅自定义分组支持，这里扩展到「全部 / 自选 / 自定义分组」
@@ -473,6 +495,40 @@ export default function PcFundTable({
 
   const handleToggleShowFullFundName = (show) => {
     persistPcGroupConfig({ pcShowFullFundName: show });
+  };
+
+  const handleSyncPcSettings = (targetIds = []) => {
+    if (!targetIds.length || typeof window === 'undefined') return false;
+    try {
+      const parsed = storageStore.getItem('customSettings') || {};
+      const payload = {
+        pcTableColumnOrder: [...columnOrder],
+        pcTableColumnVisibility: { ...columnVisibility },
+        pcTableColumns: { ...columnSizing },
+        pcShowFullFundName: !!showFullFundName,
+      };
+      const targetUpdates = {};
+      targetIds.forEach((targetId) => {
+        if (!targetId || targetId === groupKey) return;
+        const group = parsed[targetId] && typeof parsed[targetId] === 'object' ? { ...parsed[targetId] } : {};
+        parsed[targetId] = { ...group, ...payload };
+        targetUpdates[targetId] = payload;
+      });
+      const syncedCount = Object.keys(targetUpdates).length;
+      if (syncedCount === 0) return false;
+      storageStore.setItem('customSettings', JSON.stringify(parsed));
+      setConfigByGroup((prev) => {
+        const next = { ...prev };
+        Object.entries(targetUpdates).forEach(([targetId, updates]) => {
+          next[targetId] = { ...next[targetId], ...updates };
+        });
+        return next;
+      });
+      onCustomSettingsChange?.();
+      return syncedCount;
+    } catch {
+      return false;
+    }
   };
 
   const setColumnOrder = (nextOrderOrUpdater) => {
@@ -1362,24 +1418,23 @@ export default function PcFundTable({
           const holdingLocked =
             (currentTab === 'all' || currentTab === 'fav') &&
             !!original.isHoldingLinked;
-          const holdingLockedTitle = '持仓来自自定义分组汇总，无法在「全部/自选」设置持仓金额';
+          const holdingLinkedTitle = '持仓来自自定义分组汇总，点击选择分组后操作';
           if (original.holdingAmountValue == null) {
             return (
               <div
-                role={holdingLocked ? undefined : 'button'}
-                tabIndex={holdingLocked ? -1 : 0}
+                role="button"
+                tabIndex={0}
                 className="muted"
-                title={holdingLocked ? holdingLockedTitle : '设置持仓'}
+                title={holdingLocked ? holdingLinkedTitle : '设置持仓'}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 4,
                   fontSize: '12px',
-                  cursor: holdingLocked ? 'not-allowed' : 'pointer',
+                  cursor: 'pointer',
                 }}
                 onClick={(e) => {
                   e.stopPropagation?.();
-                  if (holdingLocked) return;
                   onHoldingAmountClickRef.current?.(original, { hasHolding: false });
                 }}
                 onKeyDown={(e) => {
@@ -1396,17 +1451,16 @@ export default function PcFundTable({
           }
           return (
             <div
-              title={holdingLocked ? holdingLockedTitle : '点击设置持仓'}
+              title={holdingLocked ? holdingLinkedTitle : '点击设置持仓'}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                cursor: holdingLocked ? 'not-allowed' : 'pointer',
+                cursor: 'pointer',
                 width: '100%',
                 minWidth: 0,
               }}
               onClick={(e) => {
                 e.stopPropagation?.();
-                if (holdingLocked) return;
                 onHoldingAmountClickRef.current?.(original, { hasHolding: true });
               }}
             >
@@ -1419,11 +1473,9 @@ export default function PcFundTable({
                 className="icon-button no-hover"
                 onClick={(e) => {
                   e.stopPropagation?.();
-                  if (holdingLocked) return;
                   onHoldingAmountClickRef.current?.(original, { hasHolding: true });
                 }}
-                title={holdingLocked ? holdingLockedTitle : '编辑持仓'}
-                disabled={holdingLocked}
+                title={holdingLocked ? holdingLinkedTitle : '编辑持仓'}
                 style={{
                   border: 'none',
                   width: '28px',
@@ -2193,6 +2245,9 @@ export default function PcFundTable({
         onResetSizing={() => setResetConfirmOpen(true)}
         showFullFundName={showFullFundName}
         onToggleShowFullFundName={handleToggleShowFullFundName}
+        syncOptions={settingSyncOptions}
+        currentGroupName={currentGroupName}
+        onSyncSettings={handleSyncPcSettings}
       />
       {moveGroupOpen && (
         <MoveGroupModal

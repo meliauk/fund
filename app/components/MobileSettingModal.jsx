@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, Reorder, useDragControls } from 'framer-motion';
 import {
   Drawer,
@@ -11,7 +12,9 @@ import {
 } from '@/components/ui/drawer';
 import { Switch } from '@/components/ui/switch';
 import ConfirmModal from './ConfirmModal';
-import { CloseIcon, DragIcon, ResetIcon, SettingsIcon } from './Icons';
+import SuccessModal from './SuccessModal';
+import SyncPersonalSettingsModal from './SyncPersonalSettingsModal';
+import { CloseIcon, DragIcon, RefreshIcon, ResetIcon, SettingsIcon } from './Icons';
 
 /**
  * 移动端表格个性化设置弹框（底部抽屉，基于 Drawer 组件）
@@ -26,6 +29,10 @@ import { CloseIcon, DragIcon, ResetIcon, SettingsIcon } from './Icons';
  * @param {() => void} props.onResetColumnVisibility - 重置列显示/隐藏回调
  * @param {boolean} [props.showFullFundName] - 是否展示完整基金名称
  * @param {(show: boolean) => void} [props.onToggleShowFullFundName] - 切换是否展示完整基金名称回调
+ * @param {Array<{id: string, name: string, description?: string}>} [props.syncOptions] - 可同步目标分组
+ * @param {string} [props.currentGroupName] - 当前分组名称
+ * @param {(targetIds: string[]) => void} [props.onSyncSettings] - 同步当前设置至目标分组
+ * @param {() => void} [props.onSyncSuccess] - 同步成功后的外部提示回调
  */
 function MobileSettingReorderItem({
   item,
@@ -114,12 +121,22 @@ export default function MobileSettingModal({
   onResetColumnVisibility,
   showFullFundName,
   onToggleShowFullFundName,
+  syncOptions = [],
+  currentGroupName = '当前',
+  onSyncSettings,
+  onSyncSuccess,
 }) {
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [isReordering, setIsReordering] = useState(false);
+  const [syncModalOpen, setSyncModalOpen] = useState(false);
+  const [syncSuccessOpen, setSyncSuccessOpen] = useState(false);
 
   useEffect(() => {
-    if (!open) setResetConfirmOpen(false);
+    if (!open) {
+      setResetConfirmOpen(false);
+      setSyncModalOpen(false);
+      setSyncSuccessOpen(false);
+    }
   }, [open]);
 
   const handleReorder = (newItems) => {
@@ -144,10 +161,35 @@ export default function MobileSettingModal({
           maxHeight="90vh"
         >
           <DrawerHeader className="mobile-setting-header flex-row items-center justify-between gap-2 py-5 pt-5 text-base font-semibold">
-            <DrawerTitle className="flex items-center gap-2.5 text-left">
-              <SettingsIcon width="20" height="20" />
-              <span>个性化设置</span>
-            </DrawerTitle>
+            <div className="flex min-w-0 items-center gap-2.5">
+              <DrawerTitle className="flex items-center gap-2.5 text-left">
+                <SettingsIcon width="20" height="20" />
+                <span>个性化设置</span>
+              </DrawerTitle>
+              {onSyncSettings && (
+                <button
+                  type="button"
+                  onClick={() => setSyncModalOpen(true)}
+                  className="button secondary"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    height: 28,
+                    padding: '0 10px',
+                    borderRadius: 999,
+                    fontSize: 12,
+                    background: 'rgba(255,255,255,0.06)',
+                    color: 'var(--primary)',
+                    flexShrink: 0,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <RefreshIcon width="14" height="14" />
+                  同步
+                </button>
+              )}
+            </div>
             <DrawerClose
               className="icon-button border-none bg-transparent p-1"
               title="关闭"
@@ -257,6 +299,36 @@ export default function MobileSettingModal({
             onCancel={() => setResetConfirmOpen(false)}
             confirmText="重置"
           />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {syncModalOpen && (
+          <SyncPersonalSettingsModal
+            open={syncModalOpen}
+            onClose={() => setSyncModalOpen(false)}
+            options={syncOptions}
+            sourceName={currentGroupName}
+            onConfirm={(targetIds) => {
+              const result = onSyncSettings?.(targetIds);
+              if (result !== false) {
+                setSyncModalOpen(false);
+                if (onSyncSuccess) onSyncSuccess();
+                else setSyncSuccessOpen(true);
+              }
+              return result;
+            }}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {syncSuccessOpen && typeof document !== 'undefined' && createPortal(
+          <SuccessModal
+            message="同步成功"
+            onClose={() => setSyncSuccessOpen(false)}
+            overlayStyle={{ zIndex: 10004 }}
+            cardStyle={{ maxWidth: '420px', width: '90vw', zIndex: 10005 }}
+          />,
+          document.body,
         )}
       </AnimatePresence>
     </>

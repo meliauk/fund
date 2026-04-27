@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence, motion, Reorder } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import ConfirmModal from './ConfirmModal';
-import { CloseIcon, DragIcon, ResetIcon, SettingsIcon } from './Icons';
+import SuccessModal from './SuccessModal';
+import SyncPersonalSettingsModal from './SyncPersonalSettingsModal';
+import { CloseIcon, DragIcon, RefreshIcon, ResetIcon, SettingsIcon } from './Icons';
 
 /**
  * PC 表格个性化设置侧弹框
@@ -20,6 +22,9 @@ import { CloseIcon, DragIcon, ResetIcon, SettingsIcon } from './Icons';
  * @param {() => void} props.onResetSizing - 点击重置列宽时的回调（通常用于打开确认弹框）
  * @param {boolean} [props.showFullFundName] - 是否展示完整基金名称
  * @param {(show: boolean) => void} [props.onToggleShowFullFundName] - 切换是否展示完整基金名称回调
+ * @param {Array<{id: string, name: string, description?: string}>} [props.syncOptions] - 可同步目标分组
+ * @param {string} [props.currentGroupName] - 当前分组名称
+ * @param {(targetIds: string[]) => void} [props.onSyncSettings] - 同步当前设置至目标分组
  */
 export default function PcTableSettingModal({
   open,
@@ -33,11 +38,20 @@ export default function PcTableSettingModal({
   onResetSizing,
   showFullFundName,
   onToggleShowFullFundName,
+  syncOptions = [],
+  currentGroupName = '当前',
+  onSyncSettings,
 }) {
   const [resetOrderConfirmOpen, setResetOrderConfirmOpen] = useState(false);
+  const [syncModalOpen, setSyncModalOpen] = useState(false);
+  const [syncSuccessOpen, setSyncSuccessOpen] = useState(false);
 
   useEffect(() => {
-    if (!open) setResetOrderConfirmOpen(false);
+    if (!open) {
+      setResetOrderConfirmOpen(false);
+      setSyncModalOpen(false);
+      setSyncSuccessOpen(false);
+    }
   }, [open]);
 
   useEffect(() => {
@@ -80,9 +94,32 @@ export default function PcTableSettingModal({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="pc-table-setting-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                 <SettingsIcon width="20" height="20" />
                 <span>个性化设置</span>
+                {onSyncSettings && (
+                  <button
+                    type="button"
+                    onClick={() => setSyncModalOpen(true)}
+                    className="button secondary"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      height: 28,
+                      padding: '0 10px',
+                      borderRadius: 999,
+                      fontSize: 12,
+                      background: 'rgba(255,255,255,0.06)',
+                      color: 'var(--primary)',
+                      flexShrink: 0,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <RefreshIcon width="14" height="14" />
+                    同步
+                  </button>
+                )}
               </div>
               <button
                 className="icon-button"
@@ -288,6 +325,30 @@ export default function PcTableSettingModal({
           }}
           onCancel={() => setResetOrderConfirmOpen(false)}
           confirmText="重置"
+        />
+      )}
+      {syncModalOpen && (
+        <SyncPersonalSettingsModal
+          open={syncModalOpen}
+          onClose={() => setSyncModalOpen(false)}
+          options={syncOptions}
+          sourceName={currentGroupName}
+          onConfirm={(targetIds) => {
+            const result = onSyncSettings?.(targetIds);
+            if (result !== false) {
+              setSyncModalOpen(false);
+              setSyncSuccessOpen(true);
+            }
+            return result;
+          }}
+        />
+      )}
+      {syncSuccessOpen && (
+        <SuccessModal
+          message="同步成功"
+          onClose={() => setSyncSuccessOpen(false)}
+          overlayStyle={{ zIndex: 10004 }}
+          cardStyle={{ maxWidth: '420px', width: '90vw', zIndex: 10005 }}
         />
       )}
     </AnimatePresence>

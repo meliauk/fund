@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
-export default function HoldingActionModal({ fund, onClose, onAction, hasHistory, pendingCount }) {
+export default function HoldingActionModal({ fund, onClose, onAction, hasHistory, pendingCount, groupName }) {
   const handleOpenChange = (open) => {
     if (!open) {
       onClose?.();
@@ -67,7 +67,36 @@ export default function HoldingActionModal({ fund, onClose, onAction, hasHistory
         </div>
 
         <div style={{ marginBottom: 20, textAlign: 'center' }}>
-          <div className="fund-name" style={{ fontWeight: 600, fontSize: '16px', marginBottom: 4 }}>{fund?.name}</div>
+          <div
+            className="fund-name"
+            style={{
+              fontWeight: 600,
+              fontSize: '16px',
+              marginBottom: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              flexWrap: 'wrap',
+            }}
+          >
+            <span>{fund?.name}</span>
+            {groupName ? (
+              <span
+                className="muted"
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  padding: '2px 8px',
+                  borderRadius: 999,
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid var(--border)',
+                }}
+              >
+                {groupName}
+              </span>
+            ) : null}
+          </div>
           <div className="muted" style={{ fontSize: '12px' }}>#{fund?.code}</div>
         </div>
 
