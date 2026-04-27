@@ -531,65 +531,18 @@ export const fetchFundDataFallback = async (c) => {
     throw new Error('无浏览器环境');
   }
   return new Promise(async (resolve, reject) => {
-    const searchCallbackName = `SuggestData_fallback_${Date.now()}`;
-    const searchUrl = `https://fundsuggest.eastmoney.com/FundSearch/api/FundSearchAPI.ashx?m=1&key=${encodeURIComponent(c)}&callback=${searchCallbackName}&_=${Date.now()}`;
-    let fundName = '';
-    // 并行执行名称搜索和净值抓取
-    const namePromise = new Promise((resSearch) => {
-      window[searchCallbackName] = (data) => {
-        if (data && data.Datas && data.Datas.length > 0) {
-          const found = data.Datas.find(d => d.CODE === c);
-          if (found) {
-            fundName = found.NAME || found.SHORTNAME || '';
-          }
-        }
-        delete window[searchCallbackName];
-        resSearch();
-      };
-      const script = document.createElement('script');
-      script.src = searchUrl;
-      script.async = true;
-      script.onload = () => {
-        if (document.body.contains(script)) document.body.removeChild(script);
-      };
-      script.onerror = () => {
-        if (document.body.contains(script)) document.body.removeChild(script);
-        delete window[searchCallbackName];
-        resSearch(); // 失败也不要阻塞
-      };
-      document.body.appendChild(script);
-      // 3秒强行结束名称搜索，避免阻塞核心净值数据
-      setTimeout(() => {
-        if (window[searchCallbackName]) {
-          delete window[searchCallbackName];
-          resSearch();
-        }
-      }, 3000);
-    });
-
-    const dataPromise = (async () => {
-      try {
-        const url = `https://fundf10.eastmoney.com/F10DataApi.aspx?type=lsjz&code=${c}&page=1&per=3&sdate=&edate=`;
-        const apidata = await loadScript(url);
-        const content = apidata?.content || '';
-        const navList = parseNetValuesFromLsjzContent(content);
-        const latest = navList.length > 0 ? navList[navList.length - 1] : null;
-        const previousNav = navList.length > 1 ? navList[navList.length - 2] : null;
-        const yM = computeYesterdayNavMetricsFromList(navList);
-        return { latest, previousNav, yM };
-      } catch (e) {
-        return null;
-      }
-    })();
-
     try {
-      const [_, navResult] = await Promise.all([namePromise, dataPromise]);
-      if (navResult && navResult.latest && navResult.latest.nav) {
-        const { latest, previousNav, yM } = navResult;
-        const name = fundName || `未知基金(${c})`;
+      const url = `https://fundf10.eastmoney.com/F10DataApi.aspx?type=lsjz&code=${c}&page=1&per=3&sdate=&edate=`;
+      const apidata = await loadScript(url);
+      const content = apidata?.content || '';
+      const navList = parseNetValuesFromLsjzContent(content);
+      const latest = navList.length > 0 ? navList[navList.length - 1] : null;
+      const previousNav = navList.length > 1 ? navList[navList.length - 2] : null;
+      const yM = computeYesterdayNavMetricsFromList(navList);
+      if (latest && latest.nav) {
         resolve({
           code: c,
-          name,
+          name: `基金(${c})`,
           dwjz: String(latest.nav),
           lastNav: previousNav ? String(previousNav.nav) : null,
           gsz: null,
