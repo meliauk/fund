@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import ConfirmModal from './ConfirmModal';
 import SuccessModal from './SuccessModal';
 import SyncPersonalSettingsModal from './SyncPersonalSettingsModal';
-import { CloseIcon, DragIcon, RefreshIcon, ResetIcon, SettingsIcon } from './Icons';
+import { CloseIcon, DragIcon, RefreshIcon, ResetIcon, SettingsIcon, PinIcon } from './Icons';
 
 /**
  * PC 表格个性化设置侧弹框
@@ -15,8 +15,10 @@ import { CloseIcon, DragIcon, RefreshIcon, ResetIcon, SettingsIcon } from './Ico
  * @param {() => void} props.onClose - 关闭回调
  * @param {Array<{id: string, header: string}>} props.columns - 非冻结列（id + 表头名称）
  * @param {Record<string, boolean>} [props.columnVisibility] - 列显示状态映射（id => 是否显示）
+ * @param {Array<string>} [props.pinnedColumns] - 已固定的列 ID 数组
  * @param {(newOrder: string[]) => void} props.onColumnReorder - 列顺序变更回调，参数为新的列 id 顺序
  * @param {(id: string, visible: boolean) => void} props.onToggleColumnVisibility - 列显示/隐藏切换回调
+ * @param {(id: string) => void} props.onTogglePinColumn - 切换列固定状态回调
  * @param {() => void} props.onResetColumnOrder - 重置列顺序回调，需二次确认
  * @param {() => void} props.onResetColumnVisibility - 重置列显示/隐藏回调
  * @param {() => void} props.onResetSizing - 点击重置列宽时的回调（通常用于打开确认弹框）
@@ -31,8 +33,10 @@ export default function PcTableSettingModal({
   onClose,
   columns = [],
   columnVisibility,
+  pinnedColumns = [],
   onColumnReorder,
   onToggleColumnVisibility,
+  onTogglePinColumn,
   onResetColumnOrder,
   onResetColumnVisibility,
   onResetSizing,
@@ -64,10 +68,112 @@ export default function PcTableSettingModal({
     }
   }, [open]);
 
-  const handleReorder = (newItems) => {
-    const newOrder = newItems.map((item) => item.id);
+  const pinnedItems = columns.filter((c) => pinnedColumns.includes(c.id));
+  const unpinnedItems = columns.filter((c) => !pinnedColumns.includes(c.id));
+
+  const handlePinnedReorder = (newPinnedItems) => {
+    const newOrder = [...newPinnedItems.map((item) => item.id), ...unpinnedItems.map((item) => item.id)];
     onColumnReorder?.(newOrder);
   };
+
+  const handleUnpinnedReorder = (newUnpinnedItems) => {
+    const newOrder = [...pinnedItems.map((item) => item.id), ...newUnpinnedItems.map((item) => item.id)];
+    onColumnReorder?.(newOrder);
+  };
+
+  const renderItem = (item) => (
+    <Reorder.Item
+      key={item.id}
+      value={item}
+      className="pc-table-setting-item glass"
+      layout
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.98 }}
+      transition={{
+        type: 'spring',
+        stiffness: 500,
+        damping: 35,
+        mass: 1,
+        layout: { duration: 0.2 },
+      }}
+    >
+      <div
+        className="drag-handle"
+        style={{
+          cursor: 'grab',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 8px',
+          color: 'var(--muted)',
+        }}
+      >
+        <DragIcon width="18" height="18" />
+      </div>
+      {onTogglePinColumn && (
+        <button
+          type="button"
+          className="icon-button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onTogglePinColumn(item.id);
+          }}
+          title={pinnedColumns.includes(item.id) ? '取消固定' : '固定在左侧'}
+          style={{
+            border: 'none',
+            background: 'transparent',
+            padding: '0 8px 0 0',
+            color: pinnedColumns.includes(item.id) ? 'var(--primary)' : 'var(--muted)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          <PinIcon width="16" height="16" />
+        </button>
+      )}
+      <div style={{ flex: 1, fontSize: '14px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <span>{item.header}</span>
+        {item.id === 'totalChangePercent' && (
+          <span className="muted" style={{ fontSize: '12px' }}>
+            估值涨幅与持有收益的汇总
+          </span>
+        )}
+        {item.id === 'relatedSector' && (
+          <span className="muted" style={{ fontSize: '12px' }}>
+            需登录账号
+          </span>
+        )}
+      </div>
+      {onToggleColumnVisibility && (
+        <button
+          type="button"
+          className="icon-button pc-table-column-switch"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleColumnVisibility(item.id, columnVisibility?.[item.id] === false);
+          }}
+          title={columnVisibility?.[item.id] === false ? '显示' : '隐藏'}
+          style={{
+            border: 'none',
+            padding: '0 4px',
+            backgroundColor: 'transparent',
+            cursor: 'pointer',
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          <span className={`dca-toggle-track ${columnVisibility?.[item.id] !== false ? 'enabled' : ''}`}>
+            <span
+              className="dca-toggle-thumb"
+              style={{ left: columnVisibility?.[item.id] !== false ? 16 : 2 }}
+            />
+          </span>
+        </button>
+      )}
+    </Reorder.Item>
+  );
 
   const content = (
     <AnimatePresence>
@@ -207,86 +313,38 @@ export default function PcTableSettingModal({
                   暂无可配置列
                 </div>
               ) : (
-                <Reorder.Group
-                  axis="y"
-                  values={columns}
-                  onReorder={handleReorder}
-                  className="pc-table-setting-list"
-                >
-                  <AnimatePresence mode="popLayout">
-                    {columns.map((item, index) => (
-                      <Reorder.Item
-                        key={item.id || `col-${index}`}
-                        value={item}
-                        className="pc-table-setting-item glass"
-                        layout
-                        initial={{ opacity: 0, scale: 0.98 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.98 }}
-                        transition={{
-                          type: 'spring',
-                          stiffness: 500,
-                          damping: 35,
-                          mass: 1,
-                          layout: { duration: 0.2 },
-                        }}
+                <>
+                  {pinnedItems.length > 0 && (
+                    <div style={{ marginBottom: 16 }}>
+                      <div className="muted" style={{ fontSize: '12px', marginBottom: 8, paddingLeft: 8 }}>固定在左侧</div>
+                      <Reorder.Group
+                        axis="y"
+                        values={pinnedItems}
+                        onReorder={handlePinnedReorder}
+                        className="pc-table-setting-list"
                       >
-                        <div
-                          className="drag-handle"
-                          style={{
-                            cursor: 'grab',
-                            display: 'flex',
-                            alignItems: 'center',
-                            padding: '0 8px',
-                            color: 'var(--muted)',
-                          }}
-                        >
-                          <DragIcon width="18" height="18" />
-                        </div>
-                        <div style={{ flex: 1, fontSize: '14px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                          <span>{item.header}</span>
-                          {item.id === 'totalChangePercent' && (
-                            <span className="muted" style={{ fontSize: '12px' }}>
-                              估值涨幅与持有收益的汇总
-                            </span>
-                          )}
-                          {item.id === 'relatedSector' && (
-                            <span className="muted" style={{ fontSize: '12px' }}>
-                              需登录账号
-                            </span>
-                          )}
-                        </div>
-                        {onToggleColumnVisibility && (
-                          <button
-                            type="button"
-                            className="icon-button pc-table-column-switch"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onToggleColumnVisibility(item.id, columnVisibility?.[item.id] === false);
-                            }}
-                            title={columnVisibility?.[item.id] === false ? '显示' : '隐藏'}
-                            style={{
-                              border: 'none',
-                              padding: '0 4px',
-                              backgroundColor: 'transparent',
-                              cursor: 'pointer',
-                              flexShrink: 0,
-                              display: 'flex',
-                              alignItems: 'center',
-                            }}
-                          >
-                            <span className={`dca-toggle-track ${columnVisibility?.[item.id] !== false ? 'enabled' : ''}`}>
-                              <span
-                                className="dca-toggle-thumb"
-                                style={{ left: columnVisibility?.[item.id] !== false ? 16 : 2 }}
-                              />
-                            </span>
-                          </button>
-                        )}
-                      </Reorder.Item>
-                    ))}
-                  </AnimatePresence>
-                </Reorder.Group>
+                        <AnimatePresence mode="popLayout">
+                          {pinnedItems.map(renderItem)}
+                        </AnimatePresence>
+                      </Reorder.Group>
+                    </div>
+                  )}
+                  {unpinnedItems.length > 0 && (
+                    <div>
+                      <div className="muted" style={{ fontSize: '12px', marginBottom: 8, paddingLeft: 8 }}>随表格滚动</div>
+                      <Reorder.Group
+                        axis="y"
+                        values={unpinnedItems}
+                        onReorder={handleUnpinnedReorder}
+                        className="pc-table-setting-list"
+                      >
+                        <AnimatePresence mode="popLayout">
+                          {unpinnedItems.map(renderItem)}
+                        </AnimatePresence>
+                      </Reorder.Group>
+                    </div>
+                  )}
+                </>
               )}
               {onResetSizing && (
                 <button

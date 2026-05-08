@@ -413,13 +413,17 @@ export default function PcFundTable({
     const visibility = group.pcTableColumnVisibility && typeof group.pcTableColumnVisibility === 'object'
       ? group.pcTableColumnVisibility
       : null;
-    return { sizing: sizingObj, order, visibility };
+    const pinned = Array.isArray(group.pcTableColumnPinned)
+      ? group.pcTableColumnPinned
+      : [];
+    return { sizing: sizingObj, order, visibility, pinned };
   };
 
   const getDefaultPcGroupConfig = () => ({
     order: [...NON_FROZEN_COLUMN_IDS],
     visibility: null,
     sizing: {},
+    pinned: [],
   });
 
   const getInitialConfigByGroup = () => {
@@ -439,6 +443,7 @@ export default function PcFundTable({
           pcTableColumnVisibility: pc.visibility,
           pcTableColumns: Object.keys(pc.sizing).length ? pc.sizing : null,
           pcShowFullFundName: group.pcShowFullFundName === true,
+          pcTableColumnPinned: pc.pinned,
         };
       }
     });
@@ -493,6 +498,7 @@ export default function PcFundTable({
       if (updates.pcTableColumnOrder !== undefined) group.pcTableColumnOrder = updates.pcTableColumnOrder;
       if (updates.pcTableColumnVisibility !== undefined) group.pcTableColumnVisibility = updates.pcTableColumnVisibility;
       if (updates.pcTableColumns !== undefined) group.pcTableColumns = updates.pcTableColumns;
+      if (updates.pcTableColumnPinned !== undefined) group.pcTableColumnPinned = updates.pcTableColumnPinned;
       if (updates.pcShowFullFundName !== undefined) group.pcShowFullFundName = updates.pcShowFullFundName;
       parsed[groupKey] = group;
       storageStore.setItem('customSettings', JSON.stringify(parsed));
@@ -513,6 +519,7 @@ export default function PcFundTable({
         pcTableColumnOrder: [...columnOrder],
         pcTableColumnVisibility: { ...columnVisibility },
         pcTableColumns: { ...columnSizing },
+        pcTableColumnPinned: [...(currentGroupPc?.pcTableColumnPinned || [])],
         pcShowFullFundName: !!showFullFundName,
       };
       const targetUpdates = {};
@@ -579,6 +586,30 @@ export default function PcFundTable({
   const handleToggleColumnVisibility = (columnId, visible) => {
     setColumnVisibility((prev = {}) => ({ ...prev, [columnId]: visible }));
   };
+
+  const handleTogglePinColumn = (id) => {
+    const currentPinned = currentGroupPc?.pcTableColumnPinned || [];
+    let nextPinned;
+    let nextOrder;
+    
+    if (currentPinned.includes(id)) {
+      nextPinned = currentPinned.filter(c => c !== id);
+      const pinnedPart = columnOrder.filter(c => nextPinned.includes(c));
+      const unpinnedPart = columnOrder.filter(c => !nextPinned.includes(c));
+      nextOrder = [...pinnedPart, ...unpinnedPart];
+    } else {
+      nextPinned = [...currentPinned, id];
+      const existingPinned = columnOrder.filter(c => currentPinned.includes(c));
+      const existingUnpinnedWithoutId = columnOrder.filter(c => !currentPinned.includes(c) && c !== id);
+      nextOrder = [...existingPinned, id, ...existingUnpinnedWithoutId];
+    }
+    
+    persistPcGroupConfig({
+      pcTableColumnPinned: nextPinned,
+      pcTableColumnOrder: nextOrder,
+    });
+  };
+
   const onRemoveFundRef = useRef(onRemoveFund);
   const onToggleFavoriteRef = useRef(onToggleFavorite);
   const onHoldingAmountClickRef = useRef(onHoldingAmountClick);
@@ -1821,6 +1852,13 @@ export default function PcFundTable({
       columnSizing,
       columnOrder,
       columnVisibility,
+      columnPinning: {
+        left: [
+          'fundName',
+          ...columnOrder.filter(id => (currentGroupPc?.pcTableColumnPinned || []).includes(id))
+        ],
+        right: ['actions'],
+      },
     },
     onColumnOrderChange: (updater) => {
       setColumnOrder(updater);
@@ -2389,7 +2427,9 @@ export default function PcFundTable({
           setColumnOrder(newOrder);
         }}
         columnVisibility={columnVisibility}
+        pinnedColumns={currentGroupPc?.pcTableColumnPinned || []}
         onToggleColumnVisibility={handleToggleColumnVisibility}
+        onTogglePinColumn={handleTogglePinColumn}
         onResetColumnOrder={handleResetColumnOrder}
         onResetColumnVisibility={handleResetColumnVisibility}
         onResetSizing={() => setResetConfirmOpen(true)}
