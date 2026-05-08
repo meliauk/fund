@@ -570,34 +570,6 @@ export default function HomePage() {
     initSectors();
   }, [funds.length]);
 
-  // 存储当前被划开的基金代码
-  const [swipedFundCode, setSwipedFundCode] = useState(null);
-
-  // 点击页面其他区域时收起删除按钮
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      // 检查点击事件是否来自删除按钮
-      // 如果点击的是 .swipe-action-bg 或其子元素，不执行收起逻辑
-      if (e.target.closest('.swipe-action-bg')) {
-        return;
-      }
-
-      if (swipedFundCode) {
-        setSwipedFundCode(null);
-      }
-    };
-
-    if (swipedFundCode) {
-      document.addEventListener('click', handleClickOutside);
-      document.addEventListener('touchstart', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
-    };
-  }, [swipedFundCode]);
-
 
 
     // 板块操作函数
@@ -5878,7 +5850,7 @@ export default function HomePage() {
             });
             return;
           }
-          console.error('增量同步失败，尝试全量同步', rpcError);
+          console.error('增量同步失败，尝试全量同步', rpcError?.message || JSON.stringify(rpcError));
           // RPC 失败回退到全量更新
           const fullPayload = collectLocalPayload();
           const { error: fullError } = await supabase.rpc('update_user_config_full', {
@@ -6574,7 +6546,7 @@ export default function HomePage() {
         aria-hidden={!mobileHomeTabVisible || undefined}
       >
       <>
-      <Announcement />
+      {/*<Announcement />*/}
       <div className="navbar glass" ref={navbarRef}>
         {refreshing && <div className="loading-bar"></div>}
         <div className={`brand ${(isSearchFocused || selectedFunds.length > 0) ? 'search-focused-sibling' : ''}`}>
@@ -6741,7 +6713,7 @@ export default function HomePage() {
         <div className={`actions ${(isSearchFocused || selectedFunds.length > 0) ? 'search-focused-sibling' : ''}`}>
           <UpdateChecker onModalOpenChange={setIsUpdateModalOpen} />
           <span className="github-icon-wrap">
-            <Image unoptimized alt="项目Github地址" src={githubImg} style={{ width: '30px', height: '30px', cursor: 'pointer' }} onClick={() => window.open("https://github.com/hzm0321/real-time-fund")} />
+            <Image unoptimized alt="项目Github地址" src={githubImg} style={{ width: '30px', height: '30px', cursor: 'pointer' }} onClick={() => window.open("https://github.com/meliauk/fund.git")} />
           </span>
             <button
                 className="icon-button"

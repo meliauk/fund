@@ -1568,7 +1568,7 @@ export default function MobileFundTable({
               {pctText != null ? (
                 <FitText
                   className={pctCls}
-                  style={{ fontWeight: 700, textAlign: 'right' }}
+                  style={{ fontWeight: 500, textAlign: 'right' }}
                   maxFontSize={12}
                   minFontSize={9}
                   as="div"
@@ -1608,7 +1608,7 @@ export default function MobileFundTable({
             ? `${value > 0 ? '+' : ''}${value.toFixed(2)}%`
             : '—';
           return (
-              <FitText className={cls} style={{ fontWeight: 700, textAlign: 'right' }} maxFontSize={14} minFontSize={10} as="div">
+              <FitText className={cls} style={{ fontWeight: 500, textAlign: 'right' }} maxFontSize={14} minFontSize={10} as="div">
                 {text}
               </FitText>
           );
@@ -1627,7 +1627,7 @@ export default function MobileFundTable({
             ? `${value > 0 ? '+' : ''}${value.toFixed(2)}%`
             : '—';
           return (
-              <FitText className={cls} style={{ fontWeight: 700, textAlign: 'right' }} maxFontSize={14} minFontSize={10} as="div">
+              <FitText className={cls} style={{ fontWeight: 500, textAlign: 'right' }} maxFontSize={14} minFontSize={10} as="div">
                 {text}
               </FitText>
           );
@@ -1646,7 +1646,7 @@ export default function MobileFundTable({
             ? `${value > 0 ? '+' : ''}${value.toFixed(2)}%`
             : '—';
           return (
-              <FitText className={cls} style={{ fontWeight: 700, textAlign: 'right' }} maxFontSize={14} minFontSize={10} as="div">
+              <FitText className={cls} style={{ fontWeight: 500, textAlign: 'right' }} maxFontSize={14} minFontSize={10} as="div">
                 {text}
               </FitText>
           );
@@ -1665,7 +1665,7 @@ export default function MobileFundTable({
             ? `${value > 0 ? '+' : ''}${value.toFixed(2)}%`
             : '—';
           return (
-              <FitText className={cls} style={{ fontWeight: 700, textAlign: 'right' }} maxFontSize={14} minFontSize={10} as="div">
+              <FitText className={cls} style={{ fontWeight: 500, textAlign: 'right' }} maxFontSize={14} minFontSize={10} as="div">
                 {text}
               </FitText>
           );
@@ -1684,7 +1684,7 @@ export default function MobileFundTable({
             ? `${value > 0 ? '+' : ''}${value.toFixed(2)}%`
             : '—';
           return (
-              <FitText className={cls} style={{ fontWeight: 700, textAlign: 'right' }} maxFontSize={14} minFontSize={10} as="div">
+              <FitText className={cls} style={{ fontWeight: 500, textAlign: 'right' }} maxFontSize={14} minFontSize={10} as="div">
                 {text}
               </FitText>
           );
@@ -1700,7 +1700,7 @@ export default function MobileFundTable({
             return <div className="muted" style={{ textAlign: 'right', fontSize: '12px' }}>—</div>;
           }
           return (
-              <FitText style={{ fontWeight: 700, textAlign: 'right' }} maxFontSize={14} minFontSize={10}>
+              <FitText style={{ fontWeight: 500, textAlign: 'right' }} maxFontSize={14} minFontSize={10}>
                 {masked ? <span className="mask-text">******</span> : (info.getValue() ?? '—')}
               </FitText>
           );
@@ -1716,7 +1716,7 @@ export default function MobileFundTable({
             return <div className="muted" style={{ textAlign: 'right', fontSize: '12px' }}>—</div>;
           }
           return (
-              <FitText style={{ fontWeight: 700, textAlign: 'right' }} maxFontSize={14} minFontSize={10}>
+              <FitText style={{ fontWeight: 500, textAlign: 'right' }} maxFontSize={14} minFontSize={10}>
                 {masked ? <span className="mask-text">******</span> : (info.getValue() ?? '—')}
               </FitText>
           );
@@ -1732,7 +1732,7 @@ export default function MobileFundTable({
           const displayDate = typeof date === 'string' && date.length > 5 ? date.slice(5) : date;
           return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0 }}>
-              <span style={{ display: 'block', width: '100%', fontWeight: 700 }}>
+              <span style={{ display: 'block', width: '100%', fontWeight: 500 }}>
                 <FitText maxFontSize={14} minFontSize={10}>
                   {info.getValue() ?? '—'}
                 </FitText>
@@ -1755,7 +1755,7 @@ export default function MobileFundTable({
 
           return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0 }}>
-              <span style={{ display: 'block', width: '100%', fontWeight: 700 }}>
+              <span style={{ display: 'block', width: '100%', fontWeight: 500 }}>
                 <FitText maxFontSize={14} minFontSize={10}>
                   {estimateNav ?? '—'}
                 </FitText>
@@ -1779,7 +1779,7 @@ export default function MobileFundTable({
           const cls = value > 0 ? 'up' : value < 0 ? 'down' : '';
           return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0 }}>
-              <span className={cls} style={{ display: 'block', width: '100%', fontWeight: 700 }}>
+              <span className={cls} style={{ display: 'block', width: '100%', fontWeight: 500 }}>
                 <FitText maxFontSize={14} minFontSize={10}>
                   {info.getValue() ?? '—'}
                 </FitText>
@@ -1804,7 +1804,7 @@ export default function MobileFundTable({
           const hasText = text != null && text !== '—';
           return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0 }}>
-              <span className={cls} style={{ display: 'block', width: '100%', fontWeight: 700 }}>
+              <span className={cls} style={{ display: 'block', width: '100%', fontWeight: 500 }}>
                 <FitText maxFontSize={14} minFontSize={10}>
                   {text ?? '—'}
                 </FitText>
@@ -1830,7 +1830,7 @@ export default function MobileFundTable({
           const hasText = text != null && text !== '—';
           return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0 }}>
-              <span className={cls} style={{ display: 'block', width: '100%', fontWeight: 700 }}>
+              <span className={cls} style={{ display: 'block', width: '100%', fontWeight: 500 }}>
                 <FitText maxFontSize={14} minFontSize={10}>
                   {text ?? '—'}
                 </FitText>
@@ -1858,7 +1858,7 @@ export default function MobileFundTable({
 
           return (
             <div style={{ width: '100%' }}>
-              <span className={cls} style={{ display: 'block', width: '100%', fontWeight: 700 }}>
+              <span className={cls} style={{ display: 'block', width: '100%', fontWeight: 500 }}>
                 <FitText maxFontSize={14} minFontSize={10}>
                   {masked && hasProfit ? <span className="mask-text">******</span> : amountStr}
                 </FitText>
@@ -1885,7 +1885,7 @@ export default function MobileFundTable({
             return <div className="muted" style={{ textAlign: 'right', fontSize: '12px' }}>—</div>;
           }
           return (
-            <div style={{ fontWeight: 700, textAlign: 'right' }}>
+            <div style={{ fontWeight: 500, textAlign: 'right' }}>
               {value}
             </div>
           );
@@ -1904,7 +1904,7 @@ export default function MobileFundTable({
           const percentStr = original.todayProfitPercent ?? '';
           return (
             <div style={{ width: '100%' }}>
-              <span className={cls} style={{ display: 'block', width: '100%', fontWeight: 700 }}>
+              <span className={cls} style={{ display: 'block', width: '100%', fontWeight: 500 }}>
                 <FitText maxFontSize={14} minFontSize={10}>
                   {masked && hasProfit ? <span className="mask-text">******</span> : amountStr}
                 </FitText>
@@ -1937,7 +1937,7 @@ export default function MobileFundTable({
             : 'muted';
           return (
             <div style={{ width: '100%' }}>
-              <span className={cls} style={{ display: 'block', width: '100%', fontWeight: 700 }}>
+              <span className={cls} style={{ display: 'block', width: '100%', fontWeight: 500 }}>
                 <FitText maxFontSize={14} minFontSize={10}>
                   {masked && hasProfit ? <span className="mask-text">******</span> : amountStr}
                 </FitText>
@@ -1966,7 +1966,7 @@ export default function MobileFundTable({
           const percentStr = original.holdingProfitPercent ?? '';
           return (
             <div style={{ width: '100%' }}>
-              <span className={cls} style={{ display: 'block', width: '100%', fontWeight: 700 }}>
+              <span className={cls} style={{ display: 'block', width: '100%', fontWeight: 500 }}>
                 <FitText maxFontSize={14} minFontSize={10}>
                   {masked && hasTotal ? <span className="mask-text">******</span> : amountStr}
                 </FitText>

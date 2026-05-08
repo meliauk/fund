@@ -1148,7 +1148,7 @@ export default function PcFundTable({
               {pctText != null ? (
                 <FitText
                   className={pctCls}
-                  style={{ fontWeight: 700, textAlign: 'right' }}
+                  style={{ fontWeight: 500, textAlign: 'right' }}
                   maxFontSize={14}
                   minFontSize={10}
                   as="div"
@@ -1422,7 +1422,7 @@ export default function PcFundTable({
           const hasText = text != null && text !== '—';
           return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0 }}>
-              <FitText className={cls} style={{ fontWeight: 700 }} maxFontSize={14} minFontSize={10} as="div">
+              <FitText className={cls} style={{ fontWeight: 500 }} maxFontSize={14} minFontSize={10} as="div">
                 {text ?? '—'}
               </FitText>
               {hasText && displayDate ? (
@@ -1503,7 +1503,6 @@ export default function PcFundTable({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    if (holdingLocked) return;
                     onHoldingAmountClickRef.current?.(original, { hasHolding: false });
                   }
                 }}
@@ -1547,7 +1546,7 @@ export default function PcFundTable({
                   flexShrink: 0,
                   backgroundColor: 'transparent',
                   color: holdingLocked ? 'var(--muted)' : undefined,
-                  cursor: holdingLocked ? 'not-allowed' : 'pointer',
+                  cursor: 'pointer',
                 }}
               >
                 <SettingsIcon width="14" height="14" />

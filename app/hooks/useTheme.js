@@ -9,7 +9,7 @@ import { storageStore } from '../stores';
  */
 export function useTheme() {
   // 初始固定为 dark，避免 SSR 与客户端首屏不一致导致 hydration 报错
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState('light');
   const [showThemeTransition, setShowThemeTransition] = useState(false);
 
   const handleThemeToggle = useCallback(() => {
