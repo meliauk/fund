@@ -11,6 +11,7 @@
  * - rate: 当日收益率（百分比数值，如 1.23 表示 +1.23%），基于用户成本价计算，即 (当日收益 / 成本金额) × 100
  */
 import { isPlainObject, isString, isNumber } from 'lodash';
+import { storageStore } from '@/app/stores';
 
 const STORAGE_KEY = 'fundDailyEarnings';
 export const DAILY_EARNINGS_SCOPE_ALL = 'all';
@@ -28,10 +29,9 @@ function normalizeItem(item) {
 }
 
 function getStored() {
-  if (typeof window === 'undefined' || !window.localStorage) return {};
+  if (typeof window === 'undefined') return {};
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : {};
+    const parsed = storageStore.getItem(STORAGE_KEY);
     if (!isPlainObject(parsed)) return {};
     // 兼容旧格式：{ [code]: list } -> { all: { [code]: list } }
     const hasScopeBucket = Object.values(parsed).some((v) => isPlainObject(v));
@@ -45,9 +45,9 @@ function getStored() {
 }
 
 function setStored(data) {
-  if (typeof window === 'undefined' || !window.localStorage) return;
+  if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    storageStore.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (e) {
     console.warn('dailyEarnings persist failed', e);
   }

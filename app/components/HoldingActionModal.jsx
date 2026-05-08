@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
-export default function HoldingActionModal({ fund, onClose, onAction, hasHistory, pendingCount }) {
+export default function HoldingActionModal({ fund, onClose, onAction, hasHistory, pendingCount, groupName }) {
   const handleOpenChange = (open) => {
     if (!open) {
       onClose?.();
@@ -67,31 +67,72 @@ export default function HoldingActionModal({ fund, onClose, onAction, hasHistory
         </div>
 
         <div style={{ marginBottom: 20, textAlign: 'center' }}>
-          <div className="fund-name" style={{ fontWeight: 600, fontSize: '16px', marginBottom: 4 }}>{fund?.name}</div>
+          <div
+            className="fund-name"
+            style={{
+              fontWeight: 600,
+              fontSize: '16px',
+              marginBottom: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              flexWrap: 'wrap',
+            }}
+          >
+            <span>{fund?.name}</span>
+            {groupName ? (
+              <span
+                className="muted"
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  padding: '2px 8px',
+                  borderRadius: 999,
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid var(--border)',
+                }}
+              >
+                {groupName}
+              </span>
+            ) : null}
+          </div>
           <div className="muted" style={{ fontSize: '12px' }}>#{fund?.code}</div>
         </div>
 
         <div className="grid" style={{ gap: 12 }}>
           <button
-            className="button col-4"
+            className="button col-6"
             onClick={() => onAction('buy')}
             style={{ background: 'rgba(34, 211, 238, 0.1)', border: '1px solid var(--primary)', color: 'var(--primary)', fontSize: 14 }}
           >
             加仓
           </button>
           <button
-            className="button col-4"
+            className="button col-6"
             onClick={() => onAction('sell')}
             style={{ background: 'rgba(248, 113, 113, 0.1)', border: '1px solid var(--danger)', color: 'var(--danger)', fontSize: 14 }}
           >
             减仓
           </button>
           <button
-            className="button col-4 dca-btn"
+            className="button col-6 dca-btn"
             onClick={() => onAction('dca')}
             style={{ fontSize: 14 }}
           >
             定投
+          </button>
+          <button
+            className="button col-6 convert-btn"
+            onClick={() => onAction('convert')}
+            style={{
+              background: 'rgba(168, 85, 247, 0.12)',
+              border: '1px solid rgba(168, 85, 247, 0.75)',
+              color: 'rgba(168, 85, 247, 0.75)',
+              fontSize: 14,
+            }}
+          >
+            转换
           </button>
           <button className="button col-12" onClick={() => onAction('edit')} style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text)' }}>
             编辑持仓

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { storageStore } from '../stores';
 
 const ANNOUNCEMENT_KEY = 'hasClosedAnnouncement_v1.3.1';
 
@@ -9,7 +10,7 @@ export default function Announcement() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const hasClosed = localStorage.getItem(ANNOUNCEMENT_KEY);
+    const hasClosed = storageStore.getItem(ANNOUNCEMENT_KEY);
     if (!hasClosed) {
       setIsVisible(true);
     }
@@ -18,15 +19,17 @@ export default function Announcement() {
   const handleClose = () => {
     // 清理历史 ANNOUNCEMENT_KEY
     const keysToRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('hasClosedAnnouncement_v') && key !== ANNOUNCEMENT_KEY) {
-        keysToRemove.push(key);
+    if (typeof window !== 'undefined') {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('hasClosedAnnouncement_v') && key !== ANNOUNCEMENT_KEY) {
+          keysToRemove.push(key);
+        }
       }
     }
-    keysToRemove.forEach((k) => localStorage.removeItem(k));
+    keysToRemove.forEach((k) => storageStore.removeItem(k));
 
-    localStorage.setItem(ANNOUNCEMENT_KEY, 'true');
+    storageStore.setItem(ANNOUNCEMENT_KEY, 'true');
     setIsVisible(false);
   };
 

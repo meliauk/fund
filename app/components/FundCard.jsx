@@ -125,7 +125,7 @@ export default function FundCard({
     : '';
 
   const holdingLocked = (currentTab === 'all' || currentTab === 'fav') && isHoldingLinked;
-  const holdingLockedTitle = '持仓来自自定义分组汇总，无法在「全部/自选」设置持仓金额';
+  const holdingLinkedTitle = '持仓来自自定义分组汇总，点击选择分组后操作';
 
   const style = layoutMode === 'drawer' ? {
     border: 'none',
@@ -368,15 +368,14 @@ export default function FundCard({
                 display: 'flex',
                 alignItems: 'center',
                 gap: 4,
-                cursor: holdingLocked ? 'not-allowed' : 'pointer',
+                cursor: 'pointer',
               }}
-              title={holdingLocked ? holdingLockedTitle : '设置持仓'}
+              title={holdingLocked ? holdingLinkedTitle : '设置持仓'}
               onClick={() => {
-                if (holdingLocked) return;
                 onHoldingClick?.(f);
               }}
             >
-              未设置 {holdingLocked ? null : <SettingsIcon width="12" height="12" />}
+              未设置 <SettingsIcon width="12" height="12" />
             </div>
           </div>
         ) : (
@@ -384,13 +383,12 @@ export default function FundCard({
             <div
               className="stat"
               style={{
-                cursor: holdingLocked ? 'not-allowed' : 'pointer',
+                cursor: 'pointer',
                 flexDirection: 'column',
                 gap: 4,
               }}
-              title={holdingLocked ? holdingLockedTitle : '点击设置持仓'}
+              title={holdingLocked ? holdingLinkedTitle : '点击设置持仓'}
               onClick={() => {
-                if (holdingLocked) return;
                 onActionClick?.(f);
               }}
             >
@@ -398,7 +396,7 @@ export default function FundCard({
                 className="label"
                 style={{ display: 'flex', alignItems: 'center', gap: 4 }}
               >
-                持仓金额 {holdingLocked ? null : <SettingsIcon width="12" height="12" style={{ opacity: 0.7 }} />}
+                持仓金额 <SettingsIcon width="12" height="12" style={{ opacity: 0.7 }} />
               </span>
               <span className="value">
                 {masked ? '******' : `${Number(profit.amount).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}

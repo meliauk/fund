@@ -3,14 +3,14 @@
  * 规则：获取到最新日期的数据时，清掉所有老日期的数据，只保留当日分时点。
  */
 import { isPlainObject, isString } from 'lodash';
+import { storageStore } from '@/app/stores';
 
 const STORAGE_KEY = 'fundValuationTimeseries';
 
 function getStored() {
-  if (typeof window === 'undefined' || !window.localStorage) return {};
+  if (typeof window === 'undefined') return {};
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : {};
+    const parsed = storageStore.getItem(STORAGE_KEY);
     return isPlainObject(parsed) ? parsed : {};
   } catch {
     return {};
@@ -18,9 +18,9 @@ function getStored() {
 }
 
 function setStored(data) {
-  if (typeof window === 'undefined' || !window.localStorage) return;
+  if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    storageStore.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (e) {
     console.warn('valuationTimeseries persist failed', e);
   }
