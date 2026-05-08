@@ -734,8 +734,218 @@ export const fetchFundData = async (c) => {
   const code = c != null ? String(c).trim() : '';
   if (!code) return fetchFundDataFallback(c);
 
-  return new Promise(async (resolve, reject) => {
-    fundDebugLog('fetchFundData start', { code });
+  // 1. 发起并发的历史净值和重仓请求
+  const lsjzPromise = new Promise((resolveT) => {
+    const url = `https://fundf10.eastmoney.com/F10DataApi.aspx?type=lsjz&code=${code}&page=1&per=3&sdate=&edate=`;
+    loadScript(url)
+      .then((apidata) => {
+        const content = apidata?.content || '';
+        const navList = parseNetValuesFromLsjzContent(content);
+        if (navList.length > 0) {
+          const latest = navList[navList.length - 1];
+          const previousNav = navList.length > 1 ? navList[navList.length - 2] : null;
+          const yM = computeYesterdayNavMetricsFromList(navList);
+          resolveT({
+            dwjz: String(latest.nav),
+            zzl: Number.isFinite(latest.growth) ? latest.growth : null,
+            jzrq: latest.date,
+            lastNav: previousNav ? String(previousNav.nav) : null,
+            yesterdayZzl: yM.yesterdayZzl,
+            yesterdayNavDelta: yM.yesterdayNavDelta,
+          });
+        } else {
+          resolveT(null);
+        }
+      })
+      .catch(() => resolveT(null));
+  });
+
+  const holdingsPromise = new Promise((resolveH) => {
+    fundDebugLog('holdingsPromise start', { code });
+    const holdingsUrl = `https://fundf10.eastmoney.com/FundArchivesDatas.aspx?type=jjcc&code=${code}&topline=10&year=&month=&_=${Date.now()}`;
+    getQueryClient()
+      .fetchQuery({
+        queryKey: qk.fundHoldingsArchives(code),
+        queryFn: async () => {
+          const r = await runEastmoneyF10ScriptForApidata(holdingsUrl);
+          if (!r?.ok) throw new Error(r?.error || '数据加载失败');
+          return r.apidata;
+        },
+        staleTime: 60 * 60 * 1000,
+      })
+      .then(async (apidata) => {
+      let holdings = [];
+      const html = apidata?.content || '';
+      const holdingsReportDate = extractHoldingsReportDate(html);
+      const holdingsIsLastQuarter = isLastQuarterReport(holdingsReportDate);
+
+    // 如果不是上一季度末的披露数据，则不展示重仓（并避免继续解析/请求行情）
+    if (!holdingsIsLastQuarter) {
+      resolveH({ holdings: [], holdingsReportDate, holdingsIsLastQuarter: false });
+      return;
+    }
+
+    const headerRow = (html.match(/<thead[\s\S]*?<tr[\s\S]*?<\/tr>[\s\S]*?<\/thead>/i) || [])[0] || '';
+    const headerCells = (headerRow.match(/<th[\s\S]*?>([\s\S]*?)<\/th>/gi) || []).map(th => th.replace(/<[^>]*>/g, '').trim());
+    let idxCode = -1, idxName = -1, idxWeight = -1;
+    headerCells.forEach((h, i) => {
+      const t = h.replace(/\s+/g, '');
+      if (idxCode < 0 && (t.includes('股票代码') || t.includes('证券代码'))) idxCode = i;
+      if (idxName < 0 && (t.includes('股票名称') || t.includes('证券名称'))) idxName = i;
+      if (idxWeight < 0 && (t.includes('占净值比例') || t.includes('占比'))) idxWeight = i;
+    });
+    const rows = html.match(/<tbody[\s\S]*?<\/tbody>/i) || [];
+    const dataRows = rows.length ? rows[0].match(/<tr[\s\S]*?<\/tr>/gi) || [] : html.match(/<tr[\s\S]*?<\/tr>/gi) || [];
+    for (const r of dataRows) {
+      const tds = (r.match(/<td[\s\S]*?>([\s\S]*?)<\/td>/gi) || []).map(td => td.replace(/<[^>]*>/g, '').trim());
+      if (!tds.length) continue;
+      let hc = '';
+      let hn = '';
+      let hw = '';
+      if (idxCode >= 0 && tds[idxCode]) {
+        const raw = String(tds[idxCode] || '').trim();
+        const mA = raw.match(/(\d{6})/);
+        const mHK = raw.match(/(\d{5})/);
+        // 海外股票常见为英文代码（如 AAPL / usAAPL / TSLA.US / 0700.HK）
+        const mAlpha = raw.match(/\b([A-Za-z]{1,10})\b/);
+        hc = mA ? mA[1] : (mHK ? mHK[1] : (mAlpha ? mAlpha[1].toUpperCase() : raw));
+      } else {
+        const codeIdx = tds.findIndex(txt => /^\d{6}$/.test(txt));
+        if (codeIdx >= 0) hc = tds[codeIdx];
+      }
+      if (idxName >= 0 && tds[idxName]) {
+        hn = tds[idxName];
+      } else if (hc) {
+        const i = tds.findIndex(txt => txt && txt !== hc && !/%$/.test(txt));
+        hn = i >= 0 ? tds[i] : '';
+      }
+      if (idxWeight >= 0 && tds[idxWeight]) {
+        const wm = tds[idxWeight].match(/([\d.]+)\s*%/);
+        hw = wm ? `${wm[1]}%` : tds[idxWeight];
+      } else {
+        const wIdx = tds.findIndex(txt => /\d+(?:\.\d+)?\s*%/.test(txt));
+        hw = wIdx >= 0 ? tds[wIdx].match(/([\d.]+)\s*%/)?.[1] + '%' : '';
+      }
+      if (hc || hn || hw) {
+        holdings.push({ code: hc, name: hn, weight: hw, change: null });
+      }
+    }
+    holdings = holdings.slice(0, 10);
+    const normalizeTencentCode = (input) => {
+      const raw = String(input || '').trim();
+      if (!raw) return null;
+      // already normalized tencent styles (normalize prefix casing)
+      const mPref = raw.match(/^(us|hk|sh|sz|bj)(.+)$/i);
+      if (mPref) {
+        const p = mPref[1].toLowerCase();
+        const rest = String(mPref[2] || '').trim();
+        // usAAPL / usIXIC: rest use upper; hk00700 keep digits
+        return `${p}${/^\d+$/.test(rest) ? rest : rest.toUpperCase()}`;
+      }
+      const mSPref = raw.match(/^s_(sh|sz|bj|hk)(.+)$/i);
+      if (mSPref) {
+        const p = mSPref[1].toLowerCase();
+        const rest = String(mSPref[2] || '').trim();
+        return `s_${p}${/^\d+$/.test(rest) ? rest : rest.toUpperCase()}`;
+      }
+
+      // A股/北证
+      if (/^\d{6}$/.test(raw)) {
+        const pfx =
+          raw.startsWith('6') || raw.startsWith('9')
+            ? 'sh'
+            : raw.startsWith('4') || raw.startsWith('8')
+              ? 'bj'
+              : 'sz';
+        return `s_${pfx}${raw}`;
+      }
+      // 港股（数字）
+      if (/^\d{5}$/.test(raw)) return `s_hk${raw}`;
+
+      // 形如 0700.HK / 00001.HK
+      const mHkDot = raw.match(/^(\d{4,5})\.(?:HK)$/i);
+      if (mHkDot) return `s_hk${mHkDot[1].padStart(5, '0')}`;
+
+      // 形如 AAPL / TSLA.US / AAPL.O / BRK.B（腾讯接口对“.”支持不稳定，优先取主代码）
+      const mUsDot = raw.match(/^([A-Za-z]{1,10})(?:\.[A-Za-z]{1,6})$/);
+      if (mUsDot) return `us${mUsDot[1].toUpperCase()}`;
+      if (/^[A-Za-z]{1,10}$/.test(raw)) return `us${raw.toUpperCase()}`;
+
+      return null;
+    };
+
+    const getTencentVarName = (tencentCode) => {
+      const cd = String(tencentCode || '').trim();
+      if (!cd) return '';
+      // s_* uses v_s_*
+      if (/^s_/i.test(cd)) return `v_${cd}`;
+      // us/hk/sh/sz/bj uses v_{code}
+      return `v_${cd}`;
+    };
+
+    const needQuotes = holdings
+      .map((h) => ({
+        h,
+        tencentCode: normalizeTencentCode(h.code),
+      }))
+      .filter((x) => Boolean(x.tencentCode));
+    if (needQuotes.length) {
+      try {
+        const tencentCodes = needQuotes.map((x) => x.tencentCode).join(',');
+        if (!tencentCodes) {
+          resolveH(holdings);
+          return;
+        }
+        const quoteUrl = `https://qt.gtimg.cn/q=${tencentCodes}`;
+        await new Promise((resQuote) => {
+          const scriptQuote = document.createElement('script');
+          scriptQuote.src = quoteUrl;
+          let quoteDone = false;
+          const cleanupQuote = () => {
+            quoteDone = true;
+            if (quoteTimer) clearTimeout(quoteTimer);
+            if (document.body.contains(scriptQuote)) document.body.removeChild(scriptQuote);
+          };
+          const quoteTimer = setTimeout(() => {
+            if (quoteDone) return;
+            cleanupQuote();
+            resQuote();
+          }, 10000);
+          scriptQuote.onload = () => {
+            if (quoteDone) return;
+            needQuotes.forEach(({ h, tencentCode }) => {
+              const varName = getTencentVarName(tencentCode);
+              const dataStr = varName ? window[varName] : null;
+              if (dataStr) {
+                const parts = dataStr.split('~');
+                const isUS = /^us/i.test(String(tencentCode || ''));
+                const idx = isUS ? 32 : 5;
+                if (parts.length > idx) {
+                  h.change = parseFloat(parts[idx]);
+                }
+              }
+            });
+            cleanupQuote();
+            resQuote();
+          };
+          scriptQuote.onerror = () => {
+            cleanupQuote();
+            resQuote();
+          };
+          document.body.appendChild(scriptQuote);
+        });
+      } catch (e) {
+      }
+    }
+      resolveH({ holdings, holdingsReportDate, holdingsIsLastQuarter });
+    fundDebugLog('holdingsPromise resolved', { code, holdingsCount: holdings?.length || 0, holdingsReportDate, holdingsIsLastQuarter });
+      })
+      .catch(() => resolveH({ holdings: [], holdingsReportDate: null, holdingsIsLastQuarter: false }));
+  });
+
+  // 2. 发起估值请求 (gzPromise)
+  const gzPromise = new Promise((resolveGz, rejectGz) => {
+    fundDebugLog('fetchFundData start gz', { code });
     const gzUrl = `https://fundgz.1234567.com.cn/js/${code}.js?rt=${Date.now()}`;
     const scriptGz = document.createElement('script');
     scriptGz.src = gzUrl;
@@ -747,33 +957,25 @@ export const fetchFundData = async (c) => {
       settled = true;
       fn(arg);
     };
-    const safeResolve = settleOnce(resolve);
-    const safeReject = settleOnce(reject);
+    const safeResolve = settleOnce(resolveGz);
+    const safeReject = settleOnce(rejectGz);
 
     const cleanupScript = () => {
       try {
         if (timer) clearTimeout(timer);
-      } catch (e) {
-      }
+      } catch (e) {}
       try {
         if (document.body && document.body.contains(scriptGz)) document.body.removeChild(scriptGz);
-      } catch (e) {
-      }
+      } catch (e) {}
       try {
         if (removePending) removePending();
-      } catch (e) {
-      }
+      } catch (e) {}
     };
 
-    const onTimeout = async () => {
-      fundDebugLog('fetchFundData timeout -> fallback', { code, timeoutMs: 10000 });
+    const onTimeout = () => {
+      fundDebugLog('fetchFundData timeout -> reject gz', { code, timeoutMs: 10000 });
       cleanupScript();
-      try {
-        const r = await fetchFundDataFallback(code);
-        safeResolve(r);
-      } catch (e) {
-        safeReject(e);
-      }
+      safeReject(new Error('gz timeout'));
     };
 
     const timer = setTimeout(onTimeout, 10000);
@@ -781,24 +983,18 @@ export const fetchFundData = async (c) => {
     let removePending = null;
     removePending = dispatcher.add(code, {
       cleanup: cleanupScript,
-      onJson: async (json) => {
-        // 收到回调即视为成功触发，先清理超时/脚本/pending，再进行后续并行请求
+      onJson: (json) => {
         fundDebugLog('fetchFundData jsonpgz received', { code, fundcode: json?.fundcode });
         cleanupScript();
 
         if (!json || typeof json !== 'object') {
-          fundDebugLog('fetchFundData invalid json -> fallback', { code });
-          try {
-            const r = await fetchFundDataFallback(code);
-            safeResolve(r);
-          } catch (e) {
-            safeReject(e);
-          }
+          fundDebugLog('fetchFundData invalid json -> reject gz', { code });
+          safeReject(new Error('invalid json'));
           return;
         }
 
         const gszzlNum = Number(json.gszzl);
-        const gzData = {
+        safeResolve({
           code: json.fundcode,
           name: json.name,
           dwjz: json.dwjz,
@@ -807,266 +1003,68 @@ export const fetchFundData = async (c) => {
           jzrq: json.jzrq,
           gszzl: Number.isFinite(gszzlNum) ? gszzlNum : json.gszzl,
           valuationSource: 'fundgz'
-        };
-        const lsjzPromise = new Promise((resolveT) => {
-          const url = `https://fundf10.eastmoney.com/F10DataApi.aspx?type=lsjz&code=${code}&page=1&per=3&sdate=&edate=`;
-          loadScript(url)
-            .then((apidata) => {
-              const content = apidata?.content || '';
-              const navList = parseNetValuesFromLsjzContent(content);
-              if (navList.length > 0) {
-                const latest = navList[navList.length - 1];
-                const previousNav = navList.length > 1 ? navList[navList.length - 2] : null;
-                const yM = computeYesterdayNavMetricsFromList(navList);
-                resolveT({
-                  dwjz: String(latest.nav),
-                  zzl: Number.isFinite(latest.growth) ? latest.growth : null,
-                  jzrq: latest.date,
-                  lastNav: previousNav ? String(previousNav.nav) : null,
-                  yesterdayZzl: yM.yesterdayZzl,
-                  yesterdayNavDelta: yM.yesterdayNavDelta,
-                });
-              } else {
-                resolveT(null);
-              }
-            })
-            .catch(() => resolveT(null));
-        });
-        const holdingsPromise = new Promise((resolveH) => {
-          fundDebugLog('holdingsPromise start', { code });
-          const holdingsUrl = `https://fundf10.eastmoney.com/FundArchivesDatas.aspx?type=jjcc&code=${code}&topline=10&year=&month=&_=${Date.now()}`;
-          getQueryClient()
-            .fetchQuery({
-              queryKey: qk.fundHoldingsArchives(code),
-              queryFn: async () => {
-                const r = await runEastmoneyF10ScriptForApidata(holdingsUrl);
-                if (!r?.ok) throw new Error(r?.error || '数据加载失败');
-                return r.apidata;
-              },
-              staleTime: 60 * 60 * 1000,
-            })
-            .then(async (apidata) => {
-            let holdings = [];
-            const html = apidata?.content || '';
-            const holdingsReportDate = extractHoldingsReportDate(html);
-            const holdingsIsLastQuarter = isLastQuarterReport(holdingsReportDate);
-
-          // 如果不是上一季度末的披露数据，则不展示重仓（并避免继续解析/请求行情）
-          if (!holdingsIsLastQuarter) {
-            resolveH({ holdings: [], holdingsReportDate, holdingsIsLastQuarter: false });
-            return;
-          }
-
-          const headerRow = (html.match(/<thead[\s\S]*?<tr[\s\S]*?<\/tr>[\s\S]*?<\/thead>/i) || [])[0] || '';
-          const headerCells = (headerRow.match(/<th[\s\S]*?>([\s\S]*?)<\/th>/gi) || []).map(th => th.replace(/<[^>]*>/g, '').trim());
-          let idxCode = -1, idxName = -1, idxWeight = -1;
-          headerCells.forEach((h, i) => {
-            const t = h.replace(/\s+/g, '');
-            if (idxCode < 0 && (t.includes('股票代码') || t.includes('证券代码'))) idxCode = i;
-            if (idxName < 0 && (t.includes('股票名称') || t.includes('证券名称'))) idxName = i;
-            if (idxWeight < 0 && (t.includes('占净值比例') || t.includes('占比'))) idxWeight = i;
-          });
-          const rows = html.match(/<tbody[\s\S]*?<\/tbody>/i) || [];
-          const dataRows = rows.length ? rows[0].match(/<tr[\s\S]*?<\/tr>/gi) || [] : html.match(/<tr[\s\S]*?<\/tr>/gi) || [];
-          for (const r of dataRows) {
-            const tds = (r.match(/<td[\s\S]*?>([\s\S]*?)<\/td>/gi) || []).map(td => td.replace(/<[^>]*>/g, '').trim());
-            if (!tds.length) continue;
-            let code = '';
-            let name = '';
-            let weight = '';
-            if (idxCode >= 0 && tds[idxCode]) {
-              const raw = String(tds[idxCode] || '').trim();
-              const mA = raw.match(/(\d{6})/);
-              const mHK = raw.match(/(\d{5})/);
-              // 海外股票常见为英文代码（如 AAPL / usAAPL / TSLA.US / 0700.HK）
-              const mAlpha = raw.match(/\b([A-Za-z]{1,10})\b/);
-              code = mA ? mA[1] : (mHK ? mHK[1] : (mAlpha ? mAlpha[1].toUpperCase() : raw));
-            } else {
-              const codeIdx = tds.findIndex(txt => /^\d{6}$/.test(txt));
-              if (codeIdx >= 0) code = tds[codeIdx];
-            }
-            if (idxName >= 0 && tds[idxName]) {
-              name = tds[idxName];
-            } else if (code) {
-              const i = tds.findIndex(txt => txt && txt !== code && !/%$/.test(txt));
-              name = i >= 0 ? tds[i] : '';
-            }
-            if (idxWeight >= 0 && tds[idxWeight]) {
-              const wm = tds[idxWeight].match(/([\d.]+)\s*%/);
-              weight = wm ? `${wm[1]}%` : tds[idxWeight];
-            } else {
-              const wIdx = tds.findIndex(txt => /\d+(?:\.\d+)?\s*%/.test(txt));
-              weight = wIdx >= 0 ? tds[wIdx].match(/([\d.]+)\s*%/)?.[1] + '%' : '';
-            }
-            if (code || name || weight) {
-              holdings.push({ code, name, weight, change: null });
-            }
-          }
-          holdings = holdings.slice(0, 10);
-          const normalizeTencentCode = (input) => {
-            const raw = String(input || '').trim();
-            if (!raw) return null;
-            // already normalized tencent styles (normalize prefix casing)
-            const mPref = raw.match(/^(us|hk|sh|sz|bj)(.+)$/i);
-            if (mPref) {
-              const p = mPref[1].toLowerCase();
-              const rest = String(mPref[2] || '').trim();
-              // usAAPL / usIXIC: rest use upper; hk00700 keep digits
-              return `${p}${/^\d+$/.test(rest) ? rest : rest.toUpperCase()}`;
-            }
-            const mSPref = raw.match(/^s_(sh|sz|bj|hk)(.+)$/i);
-            if (mSPref) {
-              const p = mSPref[1].toLowerCase();
-              const rest = String(mSPref[2] || '').trim();
-              return `s_${p}${/^\d+$/.test(rest) ? rest : rest.toUpperCase()}`;
-            }
-
-            // A股/北证
-            if (/^\d{6}$/.test(raw)) {
-              const pfx =
-                raw.startsWith('6') || raw.startsWith('9')
-                  ? 'sh'
-                  : raw.startsWith('4') || raw.startsWith('8')
-                    ? 'bj'
-                    : 'sz';
-              return `s_${pfx}${raw}`;
-            }
-            // 港股（数字）
-            if (/^\d{5}$/.test(raw)) return `s_hk${raw}`;
-
-            // 形如 0700.HK / 00001.HK
-            const mHkDot = raw.match(/^(\d{4,5})\.(?:HK)$/i);
-            if (mHkDot) return `s_hk${mHkDot[1].padStart(5, '0')}`;
-
-            // 形如 AAPL / TSLA.US / AAPL.O / BRK.B（腾讯接口对“.”支持不稳定，优先取主代码）
-            const mUsDot = raw.match(/^([A-Za-z]{1,10})(?:\.[A-Za-z]{1,6})$/);
-            if (mUsDot) return `us${mUsDot[1].toUpperCase()}`;
-            if (/^[A-Za-z]{1,10}$/.test(raw)) return `us${raw.toUpperCase()}`;
-
-            return null;
-          };
-
-          const getTencentVarName = (tencentCode) => {
-            const cd = String(tencentCode || '').trim();
-            if (!cd) return '';
-            // s_* uses v_s_*
-            if (/^s_/i.test(cd)) return `v_${cd}`;
-            // us/hk/sh/sz/bj uses v_{code}
-            return `v_${cd}`;
-          };
-
-          const needQuotes = holdings
-            .map((h) => ({
-              h,
-              tencentCode: normalizeTencentCode(h.code),
-            }))
-            .filter((x) => Boolean(x.tencentCode));
-          if (needQuotes.length) {
-            try {
-              const tencentCodes = needQuotes.map((x) => x.tencentCode).join(',');
-              if (!tencentCodes) {
-                resolveH(holdings);
-                return;
-              }
-              const quoteUrl = `https://qt.gtimg.cn/q=${tencentCodes}`;
-              await new Promise((resQuote) => {
-                const scriptQuote = document.createElement('script');
-                scriptQuote.src = quoteUrl;
-                let quoteDone = false;
-                const cleanupQuote = () => {
-                  quoteDone = true;
-                  if (quoteTimer) clearTimeout(quoteTimer);
-                  if (document.body.contains(scriptQuote)) document.body.removeChild(scriptQuote);
-                };
-                const quoteTimer = setTimeout(() => {
-                  if (quoteDone) return;
-                  cleanupQuote();
-                  resQuote();
-                }, 10000);
-                scriptQuote.onload = () => {
-                  if (quoteDone) return;
-                  needQuotes.forEach(({ h, tencentCode }) => {
-                    const varName = getTencentVarName(tencentCode);
-                    const dataStr = varName ? window[varName] : null;
-                    if (dataStr) {
-                      const parts = dataStr.split('~');
-                      const isUS = /^us/i.test(String(tencentCode || ''));
-                      const idx = isUS ? 32 : 5;
-                      if (parts.length > idx) {
-                        h.change = parseFloat(parts[idx]);
-                      }
-                    }
-                  });
-                  cleanupQuote();
-                  resQuote();
-                };
-                scriptQuote.onerror = () => {
-                  cleanupQuote();
-                  resQuote();
-                };
-                document.body.appendChild(scriptQuote);
-              });
-            } catch (e) {
-            }
-          }
-            resolveH({ holdings, holdingsReportDate, holdingsIsLastQuarter });
-          fundDebugLog('holdingsPromise resolved', { code, holdingsCount: holdings?.length || 0, holdingsReportDate, holdingsIsLastQuarter });
-            })
-            .catch(() => resolveH({ holdings: [], holdingsReportDate: null, holdingsIsLastQuarter: false }));
-        });
-        Promise.all([lsjzPromise, holdingsPromise]).then(([tData, holdingsResult]) => {
-          const {
-            holdings,
-            holdingsReportDate,
-            holdingsIsLastQuarter
-          } = holdingsResult || {};
-          if (tData) {
-            if (tData.jzrq && (!gzData.jzrq || tData.jzrq >= gzData.jzrq)) {
-              gzData.dwjz = tData.dwjz;
-              gzData.jzrq = tData.jzrq;
-              gzData.zzl = tData.zzl;
-              gzData.lastNav = tData.lastNav;
-            }
-            if (Object.prototype.hasOwnProperty.call(tData, 'yesterdayZzl')) {
-              gzData.yesterdayZzl = tData.yesterdayZzl;
-            }
-            if (Object.prototype.hasOwnProperty.call(tData, 'yesterdayNavDelta')) {
-              gzData.yesterdayNavDelta = tData.yesterdayNavDelta;
-            }
-          }
-          safeResolve({
-            ...gzData,
-            holdings,
-            holdingsReportDate,
-            holdingsIsLastQuarter
-          });
         });
       },
-      onError: async () => {
-        fundDebugLog('fetchFundData onError -> fallback', { code });
+      onError: (e) => {
+        fundDebugLog('fetchFundData onError -> reject gz', { code });
         cleanupScript();
-        try {
-          const r = await fetchFundDataFallback(code);
-          safeResolve(r);
-        } catch (e) {
-          safeReject(e);
-        }
+        safeReject(e || new Error('gz error callback'));
       },
     });
 
-    scriptGz.onerror = async () => {
-      fundDebugLog('fetchFundData script error -> fallback', { code, url: gzUrl });
+    scriptGz.onerror = () => {
+      fundDebugLog('fetchFundData script error -> reject gz', { code, url: gzUrl });
       cleanupScript();
-      try {
-        const r = await fetchFundDataFallback(code);
-        safeResolve(r);
-      } catch (e) {
-        safeReject(e);
-      }
+      safeReject(new Error('gz script error'));
     };
 
     document.body.appendChild(scriptGz);
     fundDebugLog('fetchFundData script appended', { code, url: gzUrl });
+  });
+
+  // 3. 编排并合并数据
+  return new Promise(async (resolve, reject) => {
+    let baseData = null;
+    try {
+      baseData = await gzPromise;
+    } catch (e) {
+      try {
+        baseData = await fetchFundDataFallback(code);
+      } catch (fbErr) {
+        reject(fbErr);
+        return;
+      }
+    }
+
+    const [tData, holdingsResult] = await Promise.all([lsjzPromise, holdingsPromise]);
+
+    const {
+      holdings,
+      holdingsReportDate,
+      holdingsIsLastQuarter
+    } = holdingsResult || {};
+
+    if (tData) {
+      if (tData.jzrq && (!baseData.jzrq || tData.jzrq >= baseData.jzrq)) {
+        baseData.dwjz = tData.dwjz;
+        baseData.jzrq = tData.jzrq;
+        baseData.zzl = tData.zzl;
+        baseData.lastNav = tData.lastNav;
+      }
+      if (Object.prototype.hasOwnProperty.call(tData, 'yesterdayZzl')) {
+        baseData.yesterdayZzl = tData.yesterdayZzl;
+      }
+      if (Object.prototype.hasOwnProperty.call(tData, 'yesterdayNavDelta')) {
+        baseData.yesterdayNavDelta = tData.yesterdayNavDelta;
+      }
+    }
+
+    resolve({
+      ...baseData,
+      holdings,
+      holdingsReportDate,
+      holdingsIsLastQuarter
+    });
   });
 };
 
