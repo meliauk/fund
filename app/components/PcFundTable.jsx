@@ -1123,7 +1123,7 @@ export default function PcFundTable({
           const value = (code && (relatedSectorByCode?.[code] ?? relatedSectorCacheRef.current.get(code))) || '';
           // 关联板块为空时，显示基金标签
           const fundTags = Array.isArray(original.fundTags) ? original.fundTags : [];
-          const tagsText = fundTags.length > 0 
+          const tagsText = fundTags.length > 0
             ? fundTags.map(t => t && typeof t === 'object' && t.name != null ? String(t.name).trim() : String(t).trim()).filter(Boolean).join(', ')
             : '';
           const display = value || tagsText || '—';
@@ -1883,7 +1883,12 @@ export default function PcFundTable({
     const style = {
       width: `${column.getSize()}px`,
     };
-    if (!isPinned) return style;
+    if (!isPinned) {
+      return {
+        ...style,
+        zIndex: isHeader ? 1 : 0,
+      };
+    }
 
     const isLeft = isPinned === 'left';
     const isRight = isPinned === 'right';
@@ -2042,6 +2047,7 @@ export default function PcFundTable({
         .table-header-row-scroll,
         .table-row-scroll {
           display: flex !important;
+          align-items: stretch !important; /* 让每个单元格撑满行高 */
           width: fit-content !important;
           min-width: 100%;
           gap: 0 !important; /* Reset gap because we control width explicitly */
@@ -2049,6 +2055,8 @@ export default function PcFundTable({
 
         .table-header-cell,
         .table-cell {
+          display: flex !important;
+          align-items: center; /* 保持单元格内容垂直居中 */
           flex-shrink: 0;
           box-sizing: border-box;
           padding-left: 8px;
@@ -2211,8 +2219,7 @@ export default function PcFundTable({
               items={data.map((item) => item.code)}
               strategy={verticalListSortingStrategy}
             >
-              {/* 禁用 AnimatePresence 动画以避免抖动 */}
-              {false ? (
+              {enableRowAnimation ? (
                 <AnimatePresence mode="popLayout">
                   {tableRows.map((row, index) => (
                     <SortableRow
