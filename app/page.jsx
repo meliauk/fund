@@ -3583,32 +3583,30 @@ export default function HomePage() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 实时同步
-  useEffect(() => {
-    if (!isSupabaseConfigured || !user?.id) return;
-    const deviceId = deviceIdRef.current;
-    if (!deviceId) return; // 确保设备ID已初始化
-
-    const channel = supabase
-      .channel(`user-configs-${user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_configs', filter: `last_device_id=neq.${deviceId}` }, async (payload) => {
-        if (deviceConflictModalOpenRef.current) return; // 如果有拦截弹窗，忽略实时推送，防止覆盖本地数据
-        if (payload.eventType !== 'INSERT' && payload.eventType !== 'UPDATE') return;
-        const incoming = payload?.new?.data;
-        if (!isPlainObject(incoming)) return;
-        const incomingDeviceId = incoming?._syncMeta?.deviceId ? String(incoming._syncMeta.deviceId) : '';
-        if (incomingDeviceId && deviceIdRef.current && incomingDeviceId === deviceIdRef.current) return;
-        const incomingComparable = getComparablePayload(incoming);
-        if (!incomingComparable || incomingComparable === lastSyncedRef.current) return;
-        await applyCloudConfig(incoming, payload.new.updated_at);
-      })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user?.id]);
-
-
+  // // 实时同步
+  // useEffect(() => {
+  //   if (!isSupabaseConfigured || !user?.id) return;
+  //   const deviceId = deviceIdRef.current;
+  //   if (!deviceId) return; // 确保设备ID已初始化
+  //
+  //   const channel = supabase
+  //     .channel(`user-configs-${user.id}`)
+  //     .on('postgres_changes', { event: '*', schema: 'public', table: 'user_configs', filter: `last_device_id=neq.${deviceId}` }, async (payload) => {
+  //       if (deviceConflictModalOpenRef.current) return; // 如果有拦截弹窗，忽略实时推送，防止覆盖本地数据
+  //       if (payload.eventType !== 'INSERT' && payload.eventType !== 'UPDATE') return;
+  //       const incoming = payload?.new?.data;
+  //       if (!isPlainObject(incoming)) return;
+  //       const incomingDeviceId = incoming?._syncMeta?.deviceId ? String(incoming._syncMeta.deviceId) : '';
+  //       if (incomingDeviceId && deviceIdRef.current && incomingDeviceId === deviceIdRef.current) return;
+  //       const incomingComparable = getComparablePayload(incoming);
+  //       if (!incomingComparable || incomingComparable === lastSyncedRef.current) return;
+  //       await applyCloudConfig(incoming, payload.new.updated_at);
+  //     })
+  //     .subscribe();
+  //   return () => {
+  //     supabase.removeChannel(channel);
+  //   };
+  // }, [user?.id]);
 
   // 登出
   const handleLogout = async () => {

@@ -48,7 +48,7 @@ begin
   select last_device_id into current_device_id from public.user_configs where user_id = auth.uid();
 
   if current_device_id is not null and p_last_device_id is not null and current_device_id != p_last_device_id and not p_force_takeover then
-    raise exception 'DEVICE_CONFLICT: Logged in on another devi ce';
+    raise exception 'DEVICE_CONFLICT: Logged in on another device';
   end if;
 
   insert into public.user_configs (user_id, data, updated_at, last_device_id)
@@ -91,10 +91,6 @@ $$;
 grant execute on function public.update_user_config_partial(jsonb, text, boolean) to authenticated;
 grant execute on function public.update_user_config_partial(jsonb, text, boolean) to service_role;
 
--- 开启实时订阅 Publication（必须，否则 Supabase Realtime 无法监听 user_configs 表变更）
-drop publication if exists supabase_realtime;
-create publication supabase_realtime for table public.user_configs;
-
 -- v1.0.0 版本更新关联板块表
 
 -- 创建 fund_related 表
@@ -106,7 +102,6 @@ create table public.fund_related (
   constraint fund_related_pkey primary key (id),
   constraint fund_related_fund_code_key unique (fund_code)
 ) TABLESPACE pg_default;
-
 
 -- 1. 开启 RLS
 ALTER TABLE fund_related ENABLE ROW LEVEL SECURITY;
