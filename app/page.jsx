@@ -5703,6 +5703,14 @@ export default function HomePage() {
         } catch { }
       }
 
+      if (options.forceTakeover) {
+        // 在耗时的 refreshAll 之前先执行一次强制同步以夺回设备活跃锁，并弹出提示
+        const currentUserId = options.userId || userIdRef.current || user?.id;
+        if (currentUserId) {
+          await syncUserConfig(currentUserId, true, null, false, { forceTakeover: true });
+        }
+      }
+
       if (nextFunds.length) {
         const codes = Array.from(new Set(nextFunds.map((f) => f.code)));
         if (codes.length) await refreshAll(codes);
@@ -5764,7 +5772,7 @@ export default function HomePage() {
 
       // 非冲突检查模式：直接复用上方查询到的 meta 数据，覆盖本地
       if (meta.data && isPlainObject(meta.data) && Object.keys(meta.data).length > 0) {
-        await applyCloudConfig(meta.data, meta.updated_at, options);
+        await applyCloudConfig(meta.data, meta.updated_at, { ...options, userId });
         return;
       }
 
@@ -7896,10 +7904,8 @@ export default function HomePage() {
               const { userId } = deviceConflictModal;
               setDeviceConflictModal({ ...deviceConflictModal, open: false });
               refreshCycleStartRef.current = Date.now();
-              // 1. 拉取云端最新数据覆盖本地，传入 forceTakeover 避免拉取后合并数据时触发逆向同步导致的异常拦截
+              // 1. 拉取云端最新数据覆盖本地，传入 forceTakeover 并在内部触发强制同步接管
               await fetchCloudConfig(userId, false, { forceTakeover: true });
-              // 2. 携带 forceTakeover 强制同步一次，夺回设备活跃锁
-              await syncUserConfig(userId, true, null, false, { forceTakeover: true });
             }}
             title="其它设备登录提示"
             message={deviceConflictModal.message}
