@@ -434,6 +434,8 @@ export default function HomePage() {
   const pcBatchClearSelectionRef = useRef(null); // 由 PcFundTable 注入，批量删除二次确认成功后清空表格多选
   const mobileBatchClearSelectionRef = useRef(null); // 由 MobileFundTable 注入，批量删除二次确认成功后退出编辑态
 
+  const isSchedulingDcaRef = useRef(false);
+
   const todayStr = formatDate();
 
   const isMobile = useIsMobile();
@@ -2805,123 +2807,138 @@ export default function HomePage() {
     const codesSet = new Set(funds.map((f) => f.code));
     if (codesSet.size === 0) return;
 
-    const scoped = migrateDcaPlansToScoped(dcaPlans);
-    const groupIdSet = new Set(groups.map((g) => g?.id).filter(Boolean));
+    if (isSchedulingDcaRef.current) return;
+    isSchedulingDcaRef.current = true;
 
-    const today = toTz(todayStr).startOf('day');
-    let nextPlans;
     try {
-      nextPlans = JSON.parse(JSON.stringify(scoped));
-    } catch {
-      nextPlans = { ...scoped };
-    }
-    const newPending = [];
+      const scoped = migrateDcaPlansToScoped(dcaPlans);
+      const groupIdSet = new Set(groups.map((g) => g?.id).filter(Boolean));
 
-    const years = new Set([today.year()]);
-    Object.values(scoped).forEach((bucket) => {
-      if (!isPlainObject(bucket)) return;
-      Object.values(bucket).forEach((plan) => {
-        if (plan?.firstDate) years.add(toTz(plan.firstDate).year());
-        if (plan?.lastDate) years.add(toTz(plan.lastDate).year());
-      });
-    });
-    await loadHolidaysForYears([...years]);
-
-    const processBucket = (scopeKey, bucket) => {
-      if (!isPlainObject(bucket)) return;
-      const tradeGid = scopeKey === DCA_SCOPE_GLOBAL ? null : scopeKey;
-      if (tradeGid && !groupIdSet.has(tradeGid)) return;
-
-      Object.entries(bucket).forEach(([code, plan]) => {
-        if (!plan || !plan.enabled) return;
-        if (!codesSet.has(code)) return;
-
-        const amount = Number(plan.amount);
-        const feeRate = Number(plan.feeRate) || 0;
-        if (!amount || amount <= 0) return;
-
-        const cycle = plan.cycle || 'monthly';
-        if (!plan.firstDate) return;
-
-        const first = toTz(plan.firstDate).startOf('day');
-        if (today.isBefore(first, 'day')) return;
-
-        const last = plan.lastDate ? toTz(plan.lastDate).startOf('day') : null;
-
-        let current = last ? last.clone() : first.clone();
-        let lastGenerated = null;
-
-        const stepOnce = () => {
-          if (cycle === 'daily') return current.add(1, 'day');
-          if (cycle === 'weekly') return current.add(1, 'week');
-          if (cycle === 'biweekly') return current.add(2, 'week');
-          if (cycle === 'monthly') return current.add(1, 'month');
-          return current.add(1, 'day');
-        };
-
-        if (last) {
-          current = stepOnce();
-        }
-
-        while (true) {
-          if (current.isAfter(today, 'day')) break;
-
-          if (!current.isBefore(first, 'day') && isDateTradingDay(current)) {
-            const dateStr = current.format('YYYY-MM-DD');
-
-            const pending = {
-              id: `dca_${scopeKey}_${code}_${dateStr}_${Date.now()}`,
-              fundCode: code,
-              fundName: (funds.find(f => f.code === code) || {}).name,
-              type: 'buy',
-              share: null,
-              amount,
-              feeRate,
-              feeMode: undefined,
-              feeValue: undefined,
-              date: dateStr,
-              isAfter3pm: false,
-              isDca: true,
-              timestamp: Date.now(),
-              ...(tradeGid ? { groupId: tradeGid } : {}),
-            };
-            newPending.push(pending);
-            lastGenerated = current;
-          }
-          current = stepOnce();
-        }
-
-        if (lastGenerated) {
-          if (!nextPlans[scopeKey]) nextPlans[scopeKey] = {};
-          nextPlans[scopeKey][code] = {
-            ...plan,
-            lastDate: lastGenerated.format('YYYY-MM-DD')
-          };
-        }
-      });
-    };
-
-    processBucket(DCA_SCOPE_GLOBAL, scoped[DCA_SCOPE_GLOBAL]);
-    Object.keys(scoped).forEach((k) => {
-      if (k === DCA_SCOPE_GLOBAL) return;
-      processBucket(k, scoped[k]);
-    });
-
-    if (newPending.length === 0) {
-      if (JSON.stringify(nextPlans) !== JSON.stringify(scoped)) {
-        setDcaPlans(nextPlans);
+      const today = toTz(todayStr).startOf('day');
+      let nextPlans;
+      try {
+        nextPlans = JSON.parse(JSON.stringify(scoped));
+      } catch {
+        nextPlans = { ...scoped };
       }
-      return;
+      const newPending = [];
+
+      const years = new Set([today.year()]);
+      Object.values(scoped).forEach((bucket) => {
+        if (!isPlainObject(bucket)) return;
+        Object.values(bucket).forEach((plan) => {
+          if (plan?.firstDate) years.add(toTz(plan.firstDate).year());
+          if (plan?.lastDate) years.add(toTz(plan.lastDate).year());
+        });
+      });
+      await loadHolidaysForYears([...years]);
+
+      const processBucket = (scopeKey, bucket) => {
+        if (!isPlainObject(bucket)) return;
+        const tradeGid = scopeKey === DCA_SCOPE_GLOBAL ? null : scopeKey;
+        if (tradeGid && !groupIdSet.has(tradeGid)) return;
+
+        Object.entries(bucket).forEach(([code, plan]) => {
+          if (!plan || !plan.enabled) return;
+          if (!codesSet.has(code)) return;
+
+          const amount = Number(plan.amount);
+          const feeRate = Number(plan.feeRate) || 0;
+          if (!amount || amount <= 0) return;
+
+          const cycle = plan.cycle || 'monthly';
+          if (!plan.firstDate) return;
+
+          const first = toTz(plan.firstDate).startOf('day');
+          if (today.isBefore(first, 'day')) return;
+
+          const last = plan.lastDate ? toTz(plan.lastDate).startOf('day') : null;
+
+          let current = last ? last.clone() : first.clone();
+          let lastGenerated = null;
+
+          const stepOnce = () => {
+            if (cycle === 'daily') return current.add(1, 'day');
+            if (cycle === 'weekly') return current.add(1, 'week');
+            if (cycle === 'biweekly') return current.add(2, 'week');
+            if (cycle === 'monthly') return current.add(1, 'month');
+            return current.add(1, 'day');
+          };
+
+          if (last) {
+            current = stepOnce();
+          }
+
+          while (true) {
+            if (current.isAfter(today, 'day')) break;
+
+            if (!current.isBefore(first, 'day') && isDateTradingDay(current)) {
+              const dateStr = current.format('YYYY-MM-DD');
+
+              const pending = {
+                id: `dca_${scopeKey}_${code}_${dateStr}`,
+                fundCode: code,
+                fundName: (funds.find(f => f.code === code) || {}).name,
+                type: 'buy',
+                share: null,
+                amount,
+                feeRate,
+                feeMode: undefined,
+                feeValue: undefined,
+                date: dateStr,
+                isAfter3pm: false,
+                isDca: true,
+                timestamp: Date.now(),
+                ...(tradeGid ? { groupId: tradeGid } : {}),
+              };
+              newPending.push(pending);
+              lastGenerated = current;
+            }
+            current = stepOnce();
+          }
+
+          if (lastGenerated) {
+            if (!nextPlans[scopeKey]) nextPlans[scopeKey] = {};
+            nextPlans[scopeKey][code] = {
+              ...plan,
+              lastDate: lastGenerated.format('YYYY-MM-DD')
+            };
+          }
+        });
+      };
+
+      processBucket(DCA_SCOPE_GLOBAL, scoped[DCA_SCOPE_GLOBAL]);
+      Object.keys(scoped).forEach((k) => {
+        if (k === DCA_SCOPE_GLOBAL) return;
+        processBucket(k, scoped[k]);
+      });
+
+      if (newPending.length === 0) {
+        if (JSON.stringify(nextPlans) !== JSON.stringify(scoped)) {
+          setDcaPlans(nextPlans);
+        }
+        return;
+      }
+
+      setDcaPlans(nextPlans);
+
+      const pendingSnapshot = useStorageStore.getState().pendingTrades;
+      const snapshotIds = new Set((Array.isArray(pendingSnapshot) ? pendingSnapshot : []).map((t) => t.id));
+      const uniqueNewPending = newPending.filter((t) => !snapshotIds.has(t.id));
+
+      setPendingTrades((prev) => {
+        const existingIds = new Set((prev || []).map((t) => t.id));
+        const unique = newPending.filter((t) => !existingIds.has(t.id));
+        if (unique.length === 0) return prev;
+        return [...(prev || []), ...unique];
+      });
+
+      if (uniqueNewPending.length > 0) {
+        showToast(`已生成 ${uniqueNewPending.length} 笔定投买入`, 'success');
+      }
+    } finally {
+      isSchedulingDcaRef.current = false;
     }
-
-    setDcaPlans(nextPlans);
-
-    setPendingTrades(prev => {
-      const merged = [...(prev || []), ...newPending];
-      return merged;
-    });
-
-    showToast(`已生成 ${newPending.length} 笔定投买入`, 'success');
   }, [isTradingDay, dcaPlans, funds, todayStr, storageHelper, groups]);
 
   useEffect(() => {
