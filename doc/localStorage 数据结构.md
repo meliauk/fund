@@ -812,7 +812,7 @@ const SYNC_KEYS = new Set([
 3. **错误处理**: 所有 localStorage 操作都应包含 try-catch 错误处理
 4. **数据格式**: 复杂数据必须使用 JSON.stringify/JSON.parse 进行序列化/反序列化
 5. **版本控制**: 公告等配置使用版本号后缀，便于控制不同版本的显示
-6. **fundValuationTimeseries**: 该数据不同步到云端，因为数据量较大且属于临时性数据
+6. **fundValuationTimeseries**: 该数据参与云端同步，但为避免频繁同步带来压力，采取“非主动触发”的懒同步策略，仅在其他数据变更时一并提交。
 7. **公告版本清理**: Announcement 组件会自动清理旧版本的公告关闭标记
 8. **fundDailyEarnings 作用域**: 当前版本使用按作用域分桶结构（`{ [scope]: { [code]: [...] } }`），旧版扁平格式会自动迁移
 9. **导入合并而非覆盖**: 导入操作始终采用合并策略，不会删除本地已有数据
