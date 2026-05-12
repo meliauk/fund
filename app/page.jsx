@@ -1688,9 +1688,7 @@ export default function HomePage() {
         const latestNavDateStr = isString(f.jzrq) ? f.jzrq : '';
         const dailyMeta = latestDailyByCode?.[f.code];
         const matchedDaily =
-          (latestNavDateStr ? (dailyMeta?.byDate?.get(latestNavDateStr) || null) : null)
-          || dailyMeta?.last
-          || null;
+          latestNavDateStr ? (dailyMeta?.byDate?.get(latestNavDateStr) || null) : null;
         const yesterdayProfitVal =
           matchedDaily && Number.isFinite(Number(matchedDaily.earnings))
             ? Number(matchedDaily.earnings)
