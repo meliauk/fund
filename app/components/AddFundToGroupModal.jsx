@@ -38,7 +38,7 @@ export default function AddFundToGroupModal({ allFunds, currentGroupCodes, holdi
   const getHoldingAmount = (fund) => {
     const holding = holdings[fund?.code];
     if (!holding || !holding.share || holding.share <= 0) return null;
-    const nav = Number(fund?.dwjz) || Number(fund?.gsz) || Number(fund?.estGsz) || 0;
+    const nav = Number(fund?.dwjz) || Number(fund?.gsz) || 0;
     if (!nav) return null;
     return holding.share * nav;
   };

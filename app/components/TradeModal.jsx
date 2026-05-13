@@ -119,7 +119,7 @@ export default function TradeModal({ type, fund, holding, onClose, onConfirm, pe
     }
   }, [showPendingList, currentPendingTrades]);
 
-  const getEstimatePrice = () => fund?.estPricedCoverage > 0.05 ? fund?.estGsz : (isNumber(fund?.gsz) ? fund?.gsz : Number(fund?.dwjz));
+  const getEstimatePrice = () => (isNumber(fund?.gsz) ? fund?.gsz : Number(fund?.dwjz));
   const [price, setPrice] = useState(getEstimatePrice());
   const [loadingPrice, setLoadingPrice] = useState(false);
   const [actualDate, setActualDate] = useState(null);

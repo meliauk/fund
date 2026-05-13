@@ -308,19 +308,17 @@ export default function FundCard({
             <Stat
               label="估值净值"
               value={
-                f.estPricedCoverage > 0.05 ? f.estGsz.toFixed(4) : (f.gsz ?? '—')
+                f.gsz ?? '—'
               }
             />
             <Stat
               label="估算涨幅"
               value={
-                f.estPricedCoverage > 0.05
-                  ? `${f.estGszzl > 0 ? '+' : ''}${f.estGszzl.toFixed(2)}%`
-                  : isNumber(f.gszzl)
-                    ? `${f.gszzl > 0 ? '+' : ''}${f.gszzl.toFixed(2)}%`
-                    : f.gszzl ?? '—'
+                isNumber(f.gszzl)
+                  ? `${f.gszzl > 0 ? '+' : ''}${f.gszzl.toFixed(2)}%`
+                  : f.gszzl ?? '—'
               }
-              delta={f.estPricedCoverage > 0.05 ? f.estGszzl : Number(f.gszzl) || 0}
+              delta={Number(f.gszzl) || 0}
             />
           </>
         )}
@@ -508,20 +506,6 @@ export default function FundCard({
           </>
         )}
       </div>
-
-      {f.estPricedCoverage > 0.05 && (
-        <div
-          style={{
-            fontSize: '10px',
-            color: 'var(--muted)',
-            marginTop: -8,
-            marginBottom: 10,
-            textAlign: 'right',
-          }}
-        >
-          基于 {Math.round(f.estPricedCoverage * 100)}% 持仓估算
-        </div>
-      )}
 
       {(() => {
         const showIntraday =

@@ -668,16 +668,14 @@ export default function HomePage() {
       }
     } else {
       // 否则使用估值
-      currentNav = fund.estPricedCoverage > 0.05
-        ? fund.estGsz
-        : (isNumber(fund.gsz) ? fund.gsz : Number(fund.dwjz));
+      currentNav = isNumber(fund.gsz) ? fund.gsz : Number(fund.dwjz);
 
       if (!currentNav) return null;
 
       if (canCalcTodayProfit) {
         const amount = shareForTodayProfit * currentNav;
         // 估算涨幅
-        const gzChange = fund.estPricedCoverage > 0.05 ? fund.estGszzl : (Number(fund.gszzl) || 0);
+        const gzChange = Number(fund.gszzl) || 0;
         profitToday = amount - (amount / (1 + gzChange / 100));
       } else {
         profitToday = null;
@@ -873,9 +871,7 @@ export default function HomePage() {
         }
         const ev = fund.noValuation
           ? null
-          : fund.estPricedCoverage > 0.05
-            ? (isNumber(fund.estGszzl) ? Number(fund.estGszzl) : null)
-            : (isNumber(fund.gszzl) ? Number(fund.gszzl) : null);
+          : (isNumber(fund.gszzl) ? Number(fund.gszzl) : null);
         if (ev != null && Number.isFinite(ev)) {
           if (ev > 0) upCount += 1;
           else if (ev < 0) downCount += 1;
@@ -942,9 +938,7 @@ export default function HomePage() {
         }
         const ev = fund.noValuation
           ? null
-          : fund.estPricedCoverage > 0.05
-            ? (isNumber(fund.estGszzl) ? Number(fund.estGszzl) : null)
-            : (isNumber(fund.gszzl) ? Number(fund.gszzl) : null);
+          : (isNumber(fund.gszzl) ? Number(fund.gszzl) : null);
         if (ev != null && Number.isFinite(ev)) {
           if (ev > 0) upCount += 1;
           else if (ev < 0) downCount += 1;
@@ -1397,15 +1391,8 @@ export default function HomePage() {
           const getYieldValue = (fund) => {
             // 与 estimateChangePercent 展示逻辑对齐：
             // - noValuation 为 true 一律视为无“估算涨幅”
-            // - 有估值覆盖时用 estGszzl
-            // - 否则仅在 gszzl 为数字时使用 gszzl
+            // - 仅在 gszzl 为数字时使用 gszzl
             if (fund.noValuation) {
-              return { value: 0, hasValue: false };
-            }
-            if (fund.estPricedCoverage > 0.05) {
-              if (isNumber(fund.estGszzl)) {
-                return { value: fund.estGszzl, hasValue: true };
-              }
               return { value: 0, hasValue: false };
             }
             if (isNumber(fund.gszzl)) {
@@ -1481,7 +1468,7 @@ export default function HomePage() {
 
             const principal = holding && isNumber(holding.cost) && isNumber(holding.share) ? holding.cost * holding.share : 0;
             const hasTodayEstimate = !f.noValuation && isString(f.gztime) && f.gztime.startsWith(todayStr);
-            const estimateChangeValue = f.noValuation ? null : (f.estPricedCoverage > 0.05 ? (isNumber(f.estGszzl) ? Number(f.estGszzl) : null) : (isNumber(f.gszzl) ? Number(f.gszzl) : null));
+            const estimateChangeValue = f.noValuation ? null : (isNumber(f.gszzl) ? Number(f.gszzl) : null);
             const holdingProfitPercentValue = total != null && principal > 0 ? (total / principal) * 100 : null;
             const hasEstimatePercent = hasTodayEstimate && estimateChangeValue != null;
             const hasHoldingPercent = holdingProfitPercentValue != null;
@@ -1617,9 +1604,7 @@ export default function HomePage() {
         const latestNav = f.dwjz != null && f.dwjz !== '' ? (typeof f.dwjz === 'number' ? Number(f.dwjz).toFixed(4) : String(f.dwjz)) : '—';
         const estimateNav = f.noValuation
           ? '—'
-          : (f.estPricedCoverage > 0.05
-            ? (f.estGsz != null ? Number(f.estGsz).toFixed(4) : '—')
-            : (f.gsz != null ? (typeof f.gsz === 'number' ? Number(f.gsz).toFixed(4) : String(f.gsz)) : '—'));
+          : (f.gsz != null ? (typeof f.gsz === 'number' ? Number(f.gsz).toFixed(4) : String(f.gsz)) : '—');
 
         const yesterdayChangePercent =
           f.zzl != null && f.zzl !== ''
@@ -1631,18 +1616,12 @@ export default function HomePage() {
 
         const estimateChangePercent = f.noValuation
           ? '—'
-          : (f.estPricedCoverage > 0.05
-            ? (f.estGszzl != null
-              ? `${f.estGszzl > 0 ? '+' : ''}${Number(f.estGszzl).toFixed(2)}%`
-              : '—')
-            : (isNumber(f.gszzl)
-              ? `${f.gszzl > 0 ? '+' : ''}${Number(f.gszzl).toFixed(2)}%`
-              : (f.gszzl ?? '—')));
+          : (isNumber(f.gszzl)
+            ? `${f.gszzl > 0 ? '+' : ''}${Number(f.gszzl).toFixed(2)}%`
+            : (f.gszzl ?? '—'));
         const estimateChangeValue = f.noValuation
           ? null
-          : (f.estPricedCoverage > 0.05
-            ? (isNumber(f.estGszzl) ? Number(f.estGszzl) : null)
-            : (isNumber(f.gszzl) ? Number(f.gszzl) : null));
+          : (isNumber(f.gszzl) ? Number(f.gszzl) : null);
         const estimateTime = f.noValuation ? (f.jzrq || '-') : (f.gztime || f.time || '-');
         const hasTodayEstimate = !f.noValuation && isString(f.gztime) && f.gztime.startsWith(todayStr);
 
@@ -1764,10 +1743,6 @@ export default function HomePage() {
         const sinceAddedCurrentNav = (() => {
           if (f.noValuation) {
             const v = Number(f.dwjz);
-            return Number.isFinite(v) && v > 0 ? v : null;
-          }
-          if (f.estPricedCoverage > 0.05) {
-            const v = Number(f.estGsz);
             return Number.isFinite(v) && v > 0 ? v : null;
           }
           const v = Number(f.gsz);
@@ -7661,7 +7636,6 @@ export default function HomePage() {
               const nav =
                 Number(f?.dwjz) ||
                 Number(f?.gsz) ||
-                Number(f?.estGsz) ||
                 0;
               if (!share || !nav) return 0;
               return share * nav;
