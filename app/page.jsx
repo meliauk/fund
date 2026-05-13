@@ -4122,6 +4122,10 @@ export default function HomePage() {
 
               const start = addDays(lastRecordedDate, 1);
               const navRows = await fetchFundNetValueRange(data.code, lastRecordedDate, latestNavDate);
+              if (Number.isFinite(latestNav) && latestNav > 0 && !navRows.some(r => r.date === latestNavDate)) {
+                navRows.push({ date: latestNavDate, nav: latestNav });
+                navRows.sort((a, b) => a.date.localeCompare(b.date));
+              }
               if (fundCodeStillInStorage(data.code)) {
                 for (const r of navRows) navCache.set(r.date, r.nav);
                 const firstIdx = navRows.findIndex((r) => r.date >= start);
