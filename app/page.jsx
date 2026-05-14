@@ -5440,7 +5440,8 @@ export default function HomePage() {
           transactions: all.transactions,
           dcaPlans: cleanedDcaPlans,
           customSettings: isPlainObject(all.customSettings) ? all.customSettings : {},
-          fundDailyEarnings: cleanedFundDailyEarnings
+          fundDailyEarnings: cleanedFundDailyEarnings,
+          fundValuationTimeseries: isPlainObject(all.fundValuationTimeseries) ? all.fundValuationTimeseries : {}
         };
       }
 
@@ -5691,10 +5692,46 @@ export default function HomePage() {
 
       if (hasOwn(cloudData, 'fundValuationTimeseries')) {
         const nextTimeseries = isPlainObject(cloudData.fundValuationTimeseries) ? cloudData.fundValuationTimeseries : {};
-        const cleanedTimeseries = {};
+        const localTimeseries = storageStore.getItem('fundValuationTimeseries', {});
+        const mergedTimeseries = { ...localTimeseries };
+
         Object.keys(nextTimeseries).forEach(code => {
           if (nextFundCodes.has(code) && Array.isArray(nextTimeseries[code])) {
-            cleanedTimeseries[code] = nextTimeseries[code];
+            const cloudArr = nextTimeseries[code];
+            const localArr = Array.isArray(mergedTimeseries[code]) ? mergedTimeseries[code] : [];
+
+            const pointsMap = new Map();
+
+            localArr.forEach(pt => {
+              if (pt && pt.date && pt.time) {
+                pointsMap.set(`${pt.date}_${pt.time}`, pt);
+              }
+            });
+
+            cloudArr.forEach(pt => {
+              if (pt && pt.date && pt.time) {
+                pointsMap.set(`${pt.date}_${pt.time}`, pt);
+              }
+            });
+
+            let mergedArr = Array.from(pointsMap.values()).sort((a, b) => {
+              if (a.date !== b.date) return a.date.localeCompare(b.date);
+              return a.time.localeCompare(b.time);
+            });
+
+            const maxDate = mergedArr.reduce((max, pt) => (pt.date > max ? pt.date : max), '');
+            if (maxDate) {
+              mergedArr = mergedArr.filter(pt => pt.date === maxDate);
+            }
+
+            mergedTimeseries[code] = mergedArr;
+          }
+        });
+
+        const cleanedTimeseries = {};
+        Object.keys(mergedTimeseries).forEach(code => {
+          if (nextFundCodes.has(code)) {
+            cleanedTimeseries[code] = mergedTimeseries[code];
           }
         });
         storageStore.setItem('fundValuationTimeseries', JSON.stringify(cleanedTimeseries));
