@@ -152,8 +152,8 @@ export default function FundCard({
         ...style,
       }}
     >
-      <div className="row" style={{ marginBottom: 10 }}>
-        <div className="title">
+      <div className="row" style={{ marginBottom: 10, alignItems: 'center', flexWrap: 'nowrap', alignContent: 'center' }}>
+        <div className="title" style={{ flex: '1 1 auto', minWidth: 0 }}>
           {showFavoriteButton ? (
             <button
               className={`icon-button fav-button ${favorites?.has(f.code) ? 'active' : ''}`}
@@ -166,7 +166,7 @@ export default function FundCard({
               <StarIcon width="18" height="18" filled={favorites?.has(f.code)} />
             </button>
           ) : null}
-          <div className="title-text">
+          <div className="title-text" style={{ minWidth: 0 }}>
             <span
               className="name-text"
               title={f.jzrq === todayStr ? '今日净值已更新' : ''}
@@ -238,7 +238,7 @@ export default function FundCard({
           </div>
         </div>
 
-        <div className="actions">
+        <div className="actions" style={{ flex: '0 0 auto', flexWrap: 'nowrap', alignSelf: 'center', marginLeft: 'auto' }}>
           <div
             className="badge-v"
             style={{ cursor: 'pointer', background: 'var(--primary-light, rgba(34, 211, 238, 0.1))', color: 'var(--primary)' }}
