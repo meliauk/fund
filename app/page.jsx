@@ -684,16 +684,18 @@ export default function HomePage() {
       }
     }
 
-    // 持仓金额
-    const amount = holding.share * currentNav;
+    // 持仓金额强制使用确权净值
+    const exactNav = Number(fund.dwjz) || currentNav;
+    const amount = holding.share * exactNav;
 
-    // 总收益 = (当前净值 - 成本价) * 份额
+    // 总收益 = (确权净值 - 成本价) * 份额
     const profitTotal = isNumber(holding.cost)
-      ? (currentNav - holding.cost) * holding.share
+      ? (exactNav - holding.cost) * holding.share
       : null;
 
     return {
       amount,
+      nav: exactNav,
       profitToday,
       profitTotal,
       principalToday: isNumber(holding.cost) ? holding.cost * shareForTodayProfit : 0
@@ -7893,20 +7895,25 @@ export default function HomePage() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {holdingModal.open && (
-          <HoldingEditModal
-            fund={holdingModal.fund}
-            holding={getScopedHolding(holdingModal.fund?.code, holdingModal.groupId)}
-            onClose={() => setHoldingModal({ open: false, fund: null })}
-            onSave={(data) => handleSaveHolding(holdingModal.fund?.code, data, holdingModal.groupId)}
-            onOpenTrade={() => {
-              const f = holdingModal.fund;
-              if (!f) return;
-              setHoldingModal({ open: false, fund: null });
-              setTradeModal({ open: true, fund: f, type: 'buy', groupId: getScopedGroupId(holdingModal.groupId) });
-            }}
-          />
-        )}
+        {holdingModal.open && (() => {
+          const f = holdingModal.fund;
+          const h = getScopedHolding(f?.code, holdingModal.groupId);
+          const p = getHoldingProfit(f, h, holdingModal.groupId);
+          return (
+            <HoldingEditModal
+              fund={f}
+              holding={h}
+              nav={p?.nav}
+              onClose={() => setHoldingModal({ open: false, fund: null })}
+              onSave={(data) => handleSaveHolding(f?.code, data, holdingModal.groupId)}
+              onOpenTrade={() => {
+                if (!f) return;
+                setHoldingModal({ open: false, fund: null });
+                setTradeModal({ open: true, fund: f, type: 'buy', groupId: getScopedGroupId(holdingModal.groupId) });
+              }}
+            />
+          );
+        })()}
       </AnimatePresence>
 
       <AnimatePresence>

@@ -19,11 +19,11 @@ const TZ = typeof Intl !== 'undefined' && Intl.DateTimeFormat
   ? (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Shanghai')
   : 'Asia/Shanghai';
 
-export default function HoldingEditModal({ fund, holding, onClose, onSave, onOpenTrade }) {
+export default function HoldingEditModal({ fund, holding, nav, onClose, onSave, onOpenTrade }) {
   const [mode, setMode] = useState('amount'); // 'amount' | 'share'
   const [dateMode, setDateMode] = useState('date'); // 'date' | 'days'
 
-  const dwjz = fund?.dwjz || fund?.gsz || 0;
+  const dwjz = nav ?? (fund?.dwjz || fund?.gsz || 0);
   const dwjzRef = useRef(dwjz);
   useEffect(() => {
     dwjzRef.current = dwjz;
