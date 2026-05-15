@@ -524,7 +524,7 @@ export default function FundCard({
 
       {(() => {
         const showIntraday =
-          Array.isArray(valuationSeries?.[f.code]) && valuationSeries[f.code].length >= 2;
+          !f.noValuation && Array.isArray(valuationSeries?.[f.code]) && valuationSeries[f.code].length >= 2;
         if (!showIntraday) return null;
 
         if (
