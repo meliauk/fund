@@ -6,6 +6,7 @@ import { storageStore } from '../stores';
 import { getQueryClient } from '../lib/get-query-client';
 import * as qk from '../lib/query-keys';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
+import { isTradingDay } from '../lib/tradingCalendar';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -24,6 +25,36 @@ const nowInTz = () => dayjs().tz(TZ);
 const toTz = (input) => (input ? dayjs.tz(input, TZ) : nowInTz());
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * 获取单位净值的缓存时长（单位：毫秒）
+ * - 交易日交易时段（09:30-15:00）：30 分钟，减少高频刷新时的冗余请求
+ * - 非交易时段（含周末、节假日、闭市）：5 分钟，确保净值更新后能尽快捕获
+ */
+const getNetValueStaleTime = () => {
+  const now = nowInTz();
+  const day = now.day();
+  const isWeekend = day === 0 || day === 6;
+
+  // 判定是否为交易日（利用 tradingCalendar 的缓存，若未加载则回退到周末判断）
+  const tradingDay = isTradingDay(now);
+
+  const hour = now.hour();
+  const minute = now.minute();
+  const timeNum = hour * 100 + minute;
+
+  // A股交易时段：09:30-11:30, 13:00-15:00
+  // 加上前后各 5 分钟冗余：09:25-11:35, 12:55-15:05
+  const isTradingTime = tradingDay && (
+    (timeNum >= 925 && timeNum <= 1135) ||
+    (timeNum >= 1255 && timeNum <= 1505)
+  );
+
+  if (isTradingTime) {
+    return 30 * 60 * 1000; // 30 分钟
+  }
+  return 5 * 60 * 1000; // 5 分钟
+};
 
 /**
  * 获取基金「关联板块」：查询 Supabase `fund_related` 表（fund_code → related_sector），并做 1 天缓存
@@ -324,9 +355,10 @@ function runEastmoneyF10ScriptForApidata(url, timeoutMs = 10000) {
   });
 }
 
-export const loadScript = (url) => {
+export const loadScript = (url, options = {}) => {
   if (typeof document === 'undefined' || !document.body) return Promise.resolve(null);
 
+  const { staleTime = 10 * 60 * 1000 } = options;
   const norm = normalizeEastmoneyScriptUrl(url);
   const qc = getQueryClient();
 
@@ -334,7 +366,7 @@ export const loadScript = (url) => {
     .fetchQuery({
       queryKey: qk.eastmoneyScript(norm),
       queryFn: () => runEastmoneyF10ScriptForApidata(url),
-      staleTime: 10 * 60 * 1000,
+      staleTime: staleTime,
     })
     .then((result) => {
       if (!result?.ok) {
@@ -349,7 +381,7 @@ export const fetchFundNetValue = async (code, date) => {
   if (typeof window === 'undefined') return null;
   const url = `https://fundf10.eastmoney.com/F10DataApi.aspx?type=lsjz&code=${code}&page=1&per=1&sdate=${date}&edate=${date}`;
   try {
-    const apidata = await loadScript(url);
+    const apidata = await loadScript(url, { staleTime: getNetValueStaleTime() });
     if (apidata && apidata.content) {
       const content = apidata.content;
       if (content.includes('暂无数据')) return null;
@@ -957,7 +989,7 @@ export const fetchFundData = async (c) => {
   // 1. 发起并发的历史净值和重仓请求
   const lsjzPromise = new Promise((resolveT) => {
     const url = `https://fundf10.eastmoney.com/F10DataApi.aspx?type=lsjz&code=${code}&page=1&per=3&sdate=&edate=`;
-    loadScript(url)
+    loadScript(url, { staleTime: getNetValueStaleTime() })
       .then((apidata) => {
         const content = apidata?.content || '';
         const navList = parseNetValuesFromLsjzContent(content);
