@@ -542,17 +542,13 @@ export default function FundCard({
           return null;
         }
 
-        // 以昨日收盘净值为基准，与估算涨幅 gszzl 保持一致
+        // 以最新收盘净值为基准，与估算涨幅 gszzl 保持一致
         const dwjz = f.dwjz != null ? Number(f.dwjz) : null;
-        const zzl = f.zzl != null ? Number(f.zzl) : null;
-        const yesterdayNav = dwjz != null && zzl != null && Number.isFinite(zzl)
-          ? dwjz / (1 + zzl / 100)
-          : dwjz;
         return (
           <FundIntradayChart
             key={`${f.code}-intraday-${theme}`}
             series={valuationSeries[f.code]}
-            referenceNav={yesterdayNav != null && Number.isFinite(yesterdayNav) ? yesterdayNav : undefined}
+            referenceNav={dwjz != null && Number.isFinite(dwjz) ? dwjz : undefined}
             theme={theme}
           />
         );
