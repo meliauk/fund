@@ -173,7 +173,7 @@ export default function TradeModal({ type, fund, holding, onClose, onConfirm, pe
       if (p > 0) {
         const netAmount = a / (1 + f / 100);
         const s = netAmount / p;
-        setCalcShare(s.toFixed(2));
+        setCalcShare(s.toFixed(6));
       } else {
         setCalcShare('待确认');
       }
@@ -207,7 +207,7 @@ export default function TradeModal({ type, fund, holding, onClose, onConfirm, pe
 
   const handleSetShareFraction = (fraction) => {
     if (availableShare > 0) {
-      setShare((availableShare * fraction).toFixed(2));
+      setShare(Number((availableShare * fraction).toFixed(6)).toString());
     }
   };
 

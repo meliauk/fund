@@ -79,8 +79,8 @@ export default function HoldingEditModal({ fund, holding, nav, onClose, onSave, 
         const principal = a - p;
         const c = s > 0 ? principal / s : 0;
 
-        setShare(s.toFixed(2));
-        setCost(c.toFixed(4));
+        setShare(Number(s.toFixed(6)).toString());
+        setCost(Number(c.toFixed(6)).toString());
       }
     } else {
       if (share && dwjz > 0) {
@@ -145,7 +145,7 @@ export default function HoldingEditModal({ fund, holding, nav, onClose, onSave, 
       const a = Number(amount);
       const p = Number(profit || 0);
       const rawShare = a / dwjz;
-      finalShare = Number(rawShare.toFixed(2));
+      finalShare = Number(rawShare.toFixed(6));
       const principal = a - p;
       finalCost = finalShare > 0 ? principal / finalShare : 0;
     }
