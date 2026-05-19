@@ -2808,7 +2808,7 @@ export default function HomePage() {
       }
       const newPending = [];
 
-      const years = new Set([today.year()]);
+      const years = new Set([today.year(), today.year() + 1]);
       Object.values(scoped).forEach((bucket) => {
         if (!isPlainObject(bucket)) return;
         Object.values(bucket).forEach((plan) => {
@@ -2857,8 +2857,19 @@ export default function HomePage() {
           while (true) {
             if (current.isAfter(today, 'day')) break;
 
-            if (!current.isBefore(first, 'day') && isDateTradingDay(current)) {
-              const dateStr = current.format('YYYY-MM-DD');
+            if (!current.isBefore(first, 'day')) {
+              // 非交易日顺延至下一个交易日
+              let tradeDate = current.clone();
+              let maxAttempts = 30;
+              while (!isDateTradingDay(tradeDate) && maxAttempts-- > 0) {
+                tradeDate = tradeDate.add(1, 'day');
+              }
+              if (!isDateTradingDay(tradeDate) || tradeDate.isAfter(today, 'day')) {
+                current = stepOnce();
+                continue;
+              }
+
+              const dateStr = tradeDate.format('YYYY-MM-DD');
 
               const pending = {
                 id: `dca_${scopeKey}_${code}_${dateStr}`,
@@ -2877,7 +2888,7 @@ export default function HomePage() {
                 ...(tradeGid ? { groupId: tradeGid } : {}),
               };
               newPending.push(pending);
-              lastGenerated = current;
+              lastGenerated = tradeDate;
             }
             current = stepOnce();
           }
