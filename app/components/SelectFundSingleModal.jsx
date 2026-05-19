@@ -23,11 +23,11 @@ export default function SelectFundSingleModal({
   const availableFunds = useMemo(() => {
     const excluded = new Set((excludeCodes || []).filter(Boolean));
     const base = (allFunds || []).filter((f) => f?.code && !excluded.has(f.code));
-    if (!searchQuery.trim()) return base;
-    const query = searchQuery.trim().toLowerCase();
+    const query = String(searchQuery ?? '').trim().toLowerCase();
+    if (!query) return base;
     return base.filter((f) =>
       (f.name && f.name.toLowerCase().includes(query)) ||
-      (f.code && String(f.code).includes(query))
+      (f.code && f.code.includes(query))
     );
   }, [allFunds, excludeCodes, searchQuery]);
 

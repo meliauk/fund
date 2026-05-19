@@ -22,12 +22,14 @@ export default function SearchFund({
 
   const canSearch = useMemo(() => {
     if (disabled) return false
-    return String(draft ?? "").trim().length > 0
+    const d = String(draft ?? "");
+    return d.trim().length > 0
   }, [draft, disabled])
 
   const handleSearch = useCallback(() => {
     if (!onSearch) return
-    onSearch(String(draft ?? "").trim())
+    const d = String(draft ?? "");
+    onSearch(d.trim())
   }, [draft, onSearch])
 
   const showClear = useMemo(() => {
