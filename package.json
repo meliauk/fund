@@ -47,6 +47,12 @@
     "vaul": "^1.1.2",
     "zustand": "^5.0.12"
   },
+  "browserslist": [
+    "> 0.2%",
+    "last 2 versions",
+    "not dead",
+    "not op_mini all"
+  ],
   "engines": {
     "node": ">=20.9.0"
   },
