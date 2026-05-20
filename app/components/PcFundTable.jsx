@@ -654,7 +654,7 @@ export default function PcFundTable({
     };
 
     const updateVerticalState = () => {
-      const nextStickyTop = getEffectiveStickyTop();
+      const nextStickyTop = getEffectiveStickyTop() - 2;
       setEffectiveStickyTop((prev) => (prev === nextStickyTop ? prev : nextStickyTop));
 
       const tableEl = tableContainerRef.current;
@@ -677,7 +677,7 @@ export default function PcFundTable({
       setPortalHorizontal((prev) => {
         const next = {
           left: rect.left,
-          right: typeof window !== 'undefined' ? Math.max(0, window.innerWidth - rect.right) : 0,
+          right: rect.left,
         };
         if (prev.left === next.left && prev.right === next.right) return prev;
         return next;

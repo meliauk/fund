@@ -760,7 +760,7 @@ export default function MobileFundTable({
     };
 
     const updateVerticalState = () => {
-      const nextStickyTop = getEffectiveStickyTop();
+      const nextStickyTop = getEffectiveStickyTop() - 2;
       setEffectiveStickyTop((prev) => (prev === nextStickyTop ? prev : nextStickyTop));
 
       const tableEl = tableContainerRef.current;
@@ -2216,7 +2216,7 @@ export default function MobileFundTable({
           const sortKey = sortMap[columnId];
           const isSorted = sortBy && sortKey === sortBy;
           let isSortEnabled = sortKey && sortRules.find(r => r.id === sortKey)?.enabled;
-          
+
           // 选择默认排序的时候，隐藏基金名称表头的排序和箭头
           if (sortBy === 'default' && sortKey === 'name') {
             isSortEnabled = false;
