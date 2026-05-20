@@ -23,7 +23,7 @@ export default function UpdateChecker({ onModalOpenChange }) {
     const checkUpdate = async () => {
       try {
         const data = await fetchLatestRelease();
-        if (!data?.tagName) return;
+        if (!data || !data.tagName || typeof data.tagName !== 'string') return;
         const remoteVersion = data.tagName.replace(/^v/, '');
         if (remoteVersion !== packageJson.version) {
           setHasUpdate(true);

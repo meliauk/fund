@@ -3,6 +3,7 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import { isString } from 'lodash';
 import { storageStore } from '../stores';
+import { withRetry } from '../lib/asyncHelper';
 import { getQueryClient } from '../lib/get-query-client';
 import * as qk from '../lib/query-keys';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
@@ -121,10 +122,10 @@ export const fetchRelatedSectorsBatch = async (codes, { cacheTime = ONE_DAY_MS, 
 
   // 2. 批量从 Supabase 查询
   try {
-    const { data, error } = await supabase
+    const { data, error } = await withRetry(() => supabase
       .from('fund_related')
       .select('fund_code, related_sector')
-      .in('fund_code', missingCodes);
+      .in('fund_code', missingCodes));
 
     if (error) throw error;
 
@@ -210,10 +211,10 @@ export const fetchFundSecidsBatch = async (labels, { cacheTime = ONE_DAY_MS } = 
   if (missingLabels.length === 0) return results;
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await withRetry(() => supabase
       .from('fund_secid')
       .select('related_sector, secid')
-      .in('related_sector', missingLabels);
+      .in('related_sector', missingLabels));
 
     if (error) throw error;
 
@@ -1047,6 +1048,35 @@ function fetchSinaEstimateNetworthResponse(code) {
  */
 
 /**
+ * 从 Supabase gs_qdii 表获取 QDII 基金的估值数据（作为天天基金数据源 1 的 fallback）
+ */
+export const fetchQdiiValuationFromSupabase = async (code) => {
+  if (!code || !isSupabaseConfigured) return null;
+  const normalized = String(code).trim();
+  if (!normalized) return null;
+
+  try {
+    const { data, error } = await withRetry(() => supabase
+      .from('gs_qdii')
+      .select('gztime, gszzl, gzstatus')
+      .eq('fund_code', normalized)
+      .maybeSingle());
+
+    if (error || !data) return null;
+
+    // gszzl 在表中是 real，通常为百分比数值（如 1.23 表示 1.23%）
+    return {
+      gztime: data.gztime != null ? String(data.gztime).replace(/:(\d{2}):\d{2}$/, ':$1') : null,
+      gszzl: data.gszzl != null && Number.isFinite(Number(data.gszzl)) ? Number(data.gszzl) : null,
+      valuationSource: 'supabase_qdii',
+      gzstatus: data.gzstatus
+    };
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
  * 按基金编码与数据源类型获取估值（天天基金 fundgz 或新浪估算曲线末点）。
  * @param {string} code - 基金编码
  * @param {number | string} [dataSource=1] - 1 天天基金；2、3 新浪估算不同口径
@@ -1119,6 +1149,20 @@ export async function fetchFundValuationBySource(code, dataSource = 1) {
     const safeResolve = settleOnce(resolve);
     const safeReject = settleOnce(reject);
 
+    const trySupabaseFallback = async (originalError) => {
+      fundDebugLog('fetchFundValuationBySource try supabase fallback', { code: c });
+      const qdii = await fetchQdiiValuationFromSupabase(c);
+      if (qdii) {
+        safeResolve({
+          code: c,
+          ...qdii,
+          gsz: null, // 由 fetchFundData 等调用方配合 dwjz 计算
+        });
+      } else {
+        safeReject(originalError || new Error('gz failed and no qdii fallback'));
+      }
+    };
+
     const scriptGz = document.createElement('script');
     scriptGz.src = gzUrl;
     scriptGz.async = true;
@@ -1138,7 +1182,7 @@ export async function fetchFundValuationBySource(code, dataSource = 1) {
     const onTimeout = () => {
       fundDebugLog('fetchFundValuationBySource gz timeout', { code: c, timeoutMs: 10000 });
       cleanupScript();
-      safeReject(new Error('gz timeout'));
+      trySupabaseFallback(new Error('gz timeout'));
     };
 
     const timer = setTimeout(onTimeout, 10000);
@@ -1151,7 +1195,7 @@ export async function fetchFundValuationBySource(code, dataSource = 1) {
         cleanupScript();
 
         if (!json || typeof json !== 'object') {
-          safeReject(new Error('invalid json'));
+          trySupabaseFallback(new Error('invalid json'));
           return;
         }
 
@@ -1167,14 +1211,14 @@ export async function fetchFundValuationBySource(code, dataSource = 1) {
       },
       onError: (e) => {
         cleanupScript();
-        safeReject(e || new Error('gz error callback'));
+        trySupabaseFallback(e || new Error('gz error callback'));
       },
     });
 
     scriptGz.onerror = () => {
       fundDebugLog('fetchFundValuationBySource gz script error', { code: c, url: gzUrl });
       cleanupScript();
-      safeReject(new Error('gz script error'));
+      trySupabaseFallback(new Error('gz script error'));
     };
 
     document.body.appendChild(scriptGz);
@@ -1453,6 +1497,15 @@ export const fetchFundData = async (c) => {
       }
     }
 
+    // 针对 supabase_qdii 等仅提供 gszzl 的数据源，使用最新的 dwjz 计算 gsz
+    if (baseData.valuationSource === 'supabase_qdii' || (baseData.gsz == null && baseData.gszzl != null)) {
+      const nav = Number(baseData.dwjz);
+      const gszzl = Number(baseData.gszzl);
+      if (Number.isFinite(nav) && Number.isFinite(gszzl)) {
+        baseData.gsz = nav * (1 + gszzl / 100);
+      }
+    }
+
     if (!baseData.name) {
       try {
         const results = await searchFunds(code);
@@ -1469,6 +1522,7 @@ export const fetchFundData = async (c) => {
     });
   });
 };
+
 
 export const searchFunds = async (val) => {
   const normalized = String(val || '').trim();
@@ -1708,13 +1762,23 @@ export const fetchLatestRelease = async () => {
   const url = process.env.NEXT_PUBLIC_GITHUB_LATEST_RELEASE_URL;
   if (!url) return null;
 
-  const res = await fetch(url);
-  if (!res.ok) return null;
-  const data = await res.json();
-  return {
-    tagName: data.tag_name,
-    body: data.body || ''
-  };
+  try {
+    const data = await withRetry(async () => {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      return res.json();
+    }, 2, 500);
+
+    if (!data || !data.tag_name) return null;
+
+    return {
+      tagName: data.tag_name,
+      body: data.body || ''
+    };
+  } catch (err) {
+    console.error('fetchLatestRelease failed after retries:', err);
+    return null;
+  }
 };
 
 export const submitFeedback = async (formData) => {
@@ -2040,9 +2104,9 @@ export const parseFundTextWithLLM = async (text) => {
   if (!supabase?.functions?.invoke) return null;
 
   try {
-    const { data, error } = await supabase.functions.invoke('analyze-fund', {
+    const { data, error } = await withRetry(() => supabase.functions.invoke('analyze-fund', {
       body: { text }
-    });
+    }));
 
     if (error) return null;
     if (!data || data.success !== true) return null;
