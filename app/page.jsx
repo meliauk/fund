@@ -1568,7 +1568,9 @@ export default function HomePage() {
             : keyB.localeCompare(keyA, 'zh-CN');
         }
         if (sortBy === 'name') {
-          return sortOrder === 'asc' ? a.name.localeCompare(b.name, 'zh-CN') : b.name.localeCompare(a.name, 'zh-CN');
+          const nameA = a.name ?? '';
+          const nameB = b.name ?? '';
+          return sortOrder === 'asc' ? nameA.localeCompare(nameB, 'zh-CN') : nameB.localeCompare(nameA, 'zh-CN');
         }
         return 0;
       });
