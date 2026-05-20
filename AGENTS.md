@@ -75,6 +75,7 @@ real-time-fund/
 - **Dual responsive layouts** — `PcFundTable` and `MobileFundTable` switch at 640px breakpoint.
 - **shadcn/ui conventions** — new-york style, CSS variables enabled, Lucide icons, path aliases (`@/components`, `@/lib/utils`).
 - **Linting only** — ESLint + lint-staged on pre-commit. No Prettier, no auto-formatting.
+- **Lodash for type checks** — 数据类型判断优先使用 lodash 方法（`isArray`, `isObject`, `isString`, `isNumber`, `isNil`, `isEqual` 等），而非原生 `Array.isArray`、`typeof` 等，保持项目一致性。
 - **React Compiler** — `reactCompiler: true` in next.config.js (experimental auto-memoization).
 - **单位规范（px/rem）** — PC 端（`> 640px`）使用 `px`；全局（media query 外）的 `px` 由 `postcss-pxtorem`（`rootValue: 16`，`mediaQuery: false`）自动转换为 `rem`，PC 端 `html { font-size: 16px }` 保证 rem 与原 px 视觉完全一致。`@media (max-width: 640px)` 块**内**的 `px` 保留不转。移动端 `html { font-size: clamp(13px, 3.84vw, 16px) }` 让全局 rem 值随视口弹性缩放。`1px` 边框（`minPixelValue: 2`）保留为 px。如需阻止某个值被转换，使用大写 `PX` 书写。
 

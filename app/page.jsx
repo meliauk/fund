@@ -12,7 +12,7 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
-import { isNumber, isString, isPlainObject, isNil } from 'lodash';
+import { isNumber, isString, isPlainObject, isNil, isArray } from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
 import { toast as sonnerToast } from 'sonner';
 import { RefreshCw } from 'lucide-react';
@@ -213,7 +213,7 @@ export default function HomePage() {
    */
   const fundTagListsByCode = useMemo(() => {
     const out = {};
-    const codeSet = new Set((funds || []).map((f) => String(f?.code ?? '').trim()).filter(Boolean));
+    const codeSet = new Set((isArray(funds) ? funds : []).map((f) => String(f?.code ?? '').trim()).filter(Boolean));
     for (const r of fundTagRecords || []) {
       if (!r || typeof r !== 'object') continue;
       const id = String(r.id ?? '').trim();
@@ -687,7 +687,7 @@ export default function HomePage() {
   }, [isTradingDay, todayStr, transactions, activeGroupId]);
 
   const groupsWithHoldings = useMemo(() => {
-    const fundByCode = new Map((funds || []).map((f) => [f.code, f]));
+    const fundByCode = new Map((isArray(funds) ? funds : []).map((f) => [f.code, f]));
     return (groups || []).filter((g) => {
       if (!g?.id || !Array.isArray(g.codes)) return false;
       const bucket = groupHoldings[g.id] || {};
@@ -703,7 +703,7 @@ export default function HomePage() {
 
   /** 「全部」全局 + 各自定义分组账本，逐笔累加（同一基金可同时计入全局与分组） */
   const summaryTabPortfolioTotals = useMemo(() => {
-    const fundByCode = new Map((funds || []).map((f) => [f.code, f]));
+    const fundByCode = new Map((isArray(funds) ? funds : []).map((f) => [f.code, f]));
     let totalAsset = 0;
     let totalProfitToday = 0;
     let totalHoldingReturn = 0;
@@ -758,7 +758,7 @@ export default function HomePage() {
   }, [funds, holdings, groupHoldings, groups, getHoldingProfit]);
 
   const hasGlobalPortfolioForSummary = useMemo(() => {
-    const fundByCode = new Map((funds || []).map((f) => [f.code, f]));
+    const fundByCode = new Map((isArray(funds) ? funds : []).map((f) => [f.code, f]));
     return Object.entries(holdings || {}).some(([code, h]) => {
       const fund = fundByCode.get(code);
       if (!fund || !h) return false;
@@ -770,7 +770,7 @@ export default function HomePage() {
   const showPortfolioSummaryTab = summaryTabPortfolioTotals.hasHolding;
 
   const { summaryMergedHoldings, summaryHoldingSourceGroupByCode } = useMemo(() => {
-    const fundByCode = new Map((funds || []).map((f) => [f.code, f]));
+    const fundByCode = new Map((isArray(funds) ? funds : []).map((f) => [f.code, f]));
     const merged = {};
     const sourceByCode = {};
     const codes = new Set();
@@ -827,7 +827,7 @@ export default function HomePage() {
 
   const summaryCardItems = useMemo(() => {
     if (currentTab !== SUMMARY_TAB_ID) return [];
-    const fundByCode = new Map((funds || []).map((f) => [f.code, f]));
+    const fundByCode = new Map((isArray(funds) ? funds : []).map((f) => [f.code, f]));
     const items = [];
 
     if (hasGlobalPortfolioForSummary) {
@@ -897,7 +897,7 @@ export default function HomePage() {
     items.push(
       ...groupsWithHoldings.map((g) => {
       const bucket = groupHoldings[g.id] || {};
-      const groupFunds = (funds || []).filter((f) => g.codes.includes(f.code));
+      const groupFunds = (isArray(funds) ? funds : []).filter((f) => g.codes.includes(f.code));
       let totalAsset = 0;
       let totalHoldingReturn = 0;
       let totalCost = 0;
@@ -1258,7 +1258,7 @@ export default function HomePage() {
 
   const activeGroupCodeSet = useMemo(() => {
     if (currentTab === SUMMARY_TAB_ID) {
-      const fundByCode = new Map((funds || []).map((f) => [f.code, f]));
+      const fundByCode = new Map((isArray(funds) ? funds : []).map((f) => [f.code, f]));
       const set = new Set();
       Object.entries(holdings || {}).forEach(([code, h]) => {
         const fund = fundByCode.get(code);
@@ -3686,7 +3686,7 @@ export default function HomePage() {
 
   const refreshCodesRef = useRef([]);
   useEffect(() => {
-    refreshCodesRef.current = Array.from(new Set((funds || []).map((f) => f.code))).filter(Boolean);
+    refreshCodesRef.current = Array.from(new Set((isArray(funds) ? funds : []).map((f) => f.code))).filter(Boolean);
   }, [funds]);
 
   useEffect(() => {
@@ -7859,7 +7859,7 @@ export default function HomePage() {
         {selectFundSingleModal.open && (
           <SelectFundSingleModal
             title="选择转入基金"
-            allFunds={(funds || []).filter((f) => f?.code && f.code !== convertModal.fund?.code)}
+            allFunds={(isArray(funds) ? funds : []).filter((f) => f?.code && f.code !== convertModal.fund?.code)}
             excludeCodes={selectFundSingleModal.excludeCodes}
             initialSelectedCode={selectFundSingleModal.initialSelectedCode}
             onClose={() => {
