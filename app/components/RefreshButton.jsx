@@ -2,8 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { RefreshIcon } from './Icons';
+import { useModalStore } from '../stores';
 
-export default function RefreshButton({ refreshCycleStartRef, refreshMs, manualRefresh, refreshing, fundsLength, paused }) {
+export default function RefreshButton({ refreshCycleStartRef, refreshMs, manualRefresh, refreshing, fundsLength }) {
+  // 从 Zustand 读取设备冲突弹框状态，暂停刷新进度条；避免 page.jsx 订阅此状态导致全量重渲染
+  const deviceConflictModal = useModalStore((s) => s.deviceConflictModal);
+  const paused = deviceConflictModal.open;
 
   // 刷新周期进度 0~1，用于环形进度条
   const [refreshProgress, setRefreshProgress] = useState(0);

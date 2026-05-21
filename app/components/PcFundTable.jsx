@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom';
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { throttle } from 'lodash';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useModalStore } from '../stores';
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import {
   flexRender,
@@ -211,13 +212,17 @@ export default function PcFundTable({
   getFundCardProps,
   closeDialogRef,
   batchSelectionClearRef,
-  blockDialogClose = false,
   stickyTop = 0,
   masked = false,
   relatedSectorSessionKey,
   onFundTagsClick,
   fundExtraDataByCode = {},
   }) {
+
+  // 从 Zustand 读取删除确认弹框状态，避免 page.jsx 订阅导致全量重渲染
+  const fundDeleteConfirm = useModalStore((s) => s.fundDeleteConfirm);
+  const fundDeleteBulkConfirm = useModalStore((s) => s.fundDeleteBulkConfirm);
+  const blockDialogClose = !!fundDeleteConfirm || !!fundDeleteBulkConfirm;
 
   const sensors = useSensors(
     useSensor(PointerSensor, {

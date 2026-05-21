@@ -13,7 +13,7 @@ Real-time mutual fund valuation tracker (基估宝). Next.js 16 App Router, pure
 ```
 real-time-fund/
 ├── app/                          # Next.js App Router root
-│   ├── page.jsx                  # MONOLITHIC SPA entry (~3000+ lines) — ALL state + logic here
+│   ├── page.jsx                  # MONOLITHIC SPA entry (~7400 lines) — state + logic + main layout
 │   ├── layout.jsx                # Root layout (theme init, PWA, GA, Toaster)
 │   ├── globals.css               # Tailwind v4 + glassmorphism CSS variables (~3557 lines)
 │   ├── api/fund.js               # ALL external data fetching (~954 lines, JSONP + script injection)
@@ -45,6 +45,7 @@ real-time-fund/
 |------|----------|-------|
 | Fund valuation logic | `app/api/fund.js` | JSONP to 天天基金, script injection to 腾讯财经 |
 | Main UI orchestration | `app/page.jsx` | Monolithic — all useState, business logic, rendering |
+| Modal rendering layer | `app/components/ModalsLayer.jsx` | All modal rendering extracted from page.jsx |
 | Fund card display | `app/components/FundCard.jsx` | Individual fund card with holdings |
 | Desktop table | `app/components/PcFundTable.jsx` | PC-specific table layout |
 | Mobile table | `app/components/MobileFundTable.jsx` | Mobile-specific layout, swipe actions |
@@ -71,13 +72,25 @@ real-time-fund/
 - **JSONP + script injection** — all external API calls bypass CORS via `<script>` tags, not fetch().
 - **localStorage-first** — all user data stored locally; Supabase sync is optional/secondary.
 - **Unified Data Access** — **Strict Requirement**: ALL `localStorage` reads and writes MUST go through `storageStore` (or `useStorageStore` in React). Never use `window.localStorage` directly for business data to ensure state synchronization, cloud sync triggering, and data integrity (e.g., automatic JSON parsing/stringifying).
-- **Monolithic page.jsx** — entire app state and logic in one file (~3000+ lines). No state management library.
+- **Monolithic page.jsx** — entire app state and logic in one file (~7400 lines). No state management library.
 - **Dual responsive layouts** — `PcFundTable` and `MobileFundTable` switch at 640px breakpoint.
 - **shadcn/ui conventions** — new-york style, CSS variables enabled, Lucide icons, path aliases (`@/components`, `@/lib/utils`).
 - **Linting only** — ESLint + lint-staged on pre-commit. No Prettier, no auto-formatting.
 - **Lodash for type checks** — 数据类型判断优先使用 lodash 方法（`isArray`, `isObject`, `isString`, `isNumber`, `isNil`, `isEqual` 等），而非原生 `Array.isArray`、`typeof` 等，保持项目一致性。
 - **React Compiler** — `reactCompiler: true` in next.config.js (experimental auto-memoization).
 - **单位规范（px/rem）** — PC 端（`> 640px`）使用 `px`；全局（media query 外）的 `px` 由 `postcss-pxtorem`（`rootValue: 16`，`mediaQuery: false`）自动转换为 `rem`，PC 端 `html { font-size: 16px }` 保证 rem 与原 px 视觉完全一致。`@media (max-width: 640px)` 块**内**的 `px` 保留不转。移动端 `html { font-size: clamp(13px, 3.84vw, 16px) }` 让全局 rem 值随视口弹性缩放。`1px` 边框（`minPixelValue: 2`）保留为 px。如需阻止某个值被转换，使用大写 `PX` 书写。
+- **Modal 写法规范** — 所有弹框统一按以下规则组织：
+  1. **Modal state 归 Zustand** — 弹框开关状态、参数、data 全部放在 `app/stores/modalStore.js` 的 Zustand store 中。不要在 page.jsx 中用 `useState` 管理弹框状态。
+  2. **所有弹框渲染集中在 ModalsLayer** — 新增弹框在 `app/components/ModalsLayer.jsx` 中渲染，不放在 page.jsx。ModalsLayer 订阅 `useModalStore`，弹框开关时仅 ModalsLayer 重渲染，不触发 page.jsx 主体。
+  3. **page.jsx 不订阅 modal state** — 弹框使用过程中需要的 page 级变量（callbacks、数据、refs）统一通过 `modalCbRef`（`useRef({})`）传递。page.jsx 中如需在 handler 中读取 modal state（如 `tradeModal.groupId`），使用 `useModalStore.getState().xxx` 而非 `useModalStore((s) => s.xxx)`（不订阅）。
+  4. **低频弹框懒加载** — 低频弹框（DonateModal、FeedbackModal、CloudConfigModal 等）使用 `dynamic(() => import(...), { ssr: false })`。高频弹框（TradeModal、DcaModal、SettingsModal 等）静态 import。
+  5. **setter 直接操作 Zustand** — 弹框 close handler 使用 `useModalStore.setState` / `useModalStore.getState` 直接读写 store（`setSettingsOpen = (v) => _ms({ settingsOpen: ... })`），不走 page.jsx 的 setState。
+  6. **弹框访问 page 级 function** — 通过 `cb.current.handleXxx` 调用。如新增弹框需要访问 page.jsx 中的函数或数据，先在 `page.jsx` 的 `modalCbRef.current = { ... }` 中添加，再在 ModalsLayer 中通过 `cb.current.xxx` 使用。
+  7. **快速新增弹框流程**：
+     - `modalStore.js` 添加 state 字段 + 初始值
+     - 创建弹框组件（静态 import 或 dynamic）
+     - `ModalsLayer.jsx` 中添加 `<AnimatePresence> + modal component + onClose/onConfirm` 渲染
+     - 如需 page 级回调 → 先在 `modalCbRef` 注册，再在 ModalsLayer 中用 `cb.current.xxx` 调用
 
 ## ANTI-PATTERNS (THIS PROJECT)
 

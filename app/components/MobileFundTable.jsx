@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 
 import ReactDOM from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useModalStore } from '../stores';
 import {
   flexRender,
   getCoreRowModel,
@@ -348,7 +349,6 @@ export default function MobileFundTable({
   onCustomSettingsChange,
   stickyTop = 0,
   getFundCardProps,
-  blockDrawerClose = false,
   closeDrawerRef,
   masked = false,
   relatedSectorSessionKey = '',
@@ -359,6 +359,11 @@ export default function MobileFundTable({
   onFundTagsClick,
   fundExtraDataByCode = {},
 }) {
+  // 从 Zustand 读取删除确认弹框状态，避免 page.jsx 订阅导致全量重渲染
+  const fundDeleteConfirm = useModalStore((s) => s.fundDeleteConfirm);
+  const fundDeleteBulkConfirm = useModalStore((s) => s.fundDeleteBulkConfirm);
+  const blockDrawerClose = !!fundDeleteConfirm || !!fundDeleteBulkConfirm;
+
   const [isEditMode, setIsEditMode] = useState(false);
   const [editSelectedCodes, setEditSelectedCodes] = useState(() => new Set());
   const [moveGroupOpen, setMoveGroupOpen] = useState(false);
