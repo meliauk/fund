@@ -4,7 +4,7 @@ import { toast as sonnerToast } from 'sonner';
 import { parseFundTextWithLLM, fetchFundData, searchFunds } from '../api/fund';
 import { recordValuation } from '../lib/valuationTimeseries';
 import { useFundFuzzyMatcher } from './useFundFuzzyMatcher';
-import { useStorageStore, useUserStore } from '../stores';
+import { useStorageStore, useUserStore, useModalStore } from '../stores';
 
 /**
  * OCR 扫描导入基金的完整流程
@@ -12,7 +12,6 @@ import { useStorageStore, useUserStore } from '../stores';
  * @param {{
  *   setCurrentTab: Function,
  *   setValuationSeries: Function,
- *   setSuccessModal: Function,
  *   showToast: Function,
  *   normalizeCode: Function,
  *   dedupeByCode: Function,
@@ -21,11 +20,11 @@ import { useStorageStore, useUserStore } from '../stores';
 export function useScanImport({
   setCurrentTab,
   setValuationSeries,
-  setSuccessModal,
   showToast,
   normalizeCode,
   dedupeByCode,
 }) {
+  const setSuccessModal = (state) => useModalStore.setState({ successModal: state });
   const user = useUserStore((s) => s.user);
   const funds = useStorageStore((s) => s.funds);
   const favorites = useStorageStore((s) => s.favorites);
@@ -39,12 +38,16 @@ export function useScanImport({
   const setCollapsedCodes = useStorageStore((s) => s.setCollapsedCodes);
   const setCollapsedTrends = useStorageStore((s) => s.setCollapsedTrends);
 
-  const [scanModalOpen, setScanModalOpen] = useState(false);
-  const [scanConfirmModalOpen, setScanConfirmModalOpen] = useState(false);
+  const scanModalOpen = useModalStore((s) => s.scanModalOpen);
+  const scanConfirmModalOpen = useModalStore((s) => s.scanConfirmModalOpen);
+  const isScanning = useModalStore((s) => s.isScanning);
+  const isScanImporting = useModalStore((s) => s.isScanImporting);
+  const setScanModalOpen = (v) => useModalStore.setState({ scanModalOpen: typeof v === 'function' ? v(useModalStore.getState().scanModalOpen) : v });
+  const setScanConfirmModalOpen = (v) => useModalStore.setState({ scanConfirmModalOpen: typeof v === 'function' ? v(useModalStore.getState().scanConfirmModalOpen) : v });
+  const setIsScanning = (v) => useModalStore.setState({ isScanning: typeof v === 'function' ? v(useModalStore.getState().isScanning) : v });
+  const setIsScanImporting = (v) => useModalStore.setState({ isScanImporting: typeof v === 'function' ? v(useModalStore.getState().isScanImporting) : v });
   const [scannedFunds, setScannedFunds] = useState([]);
   const [selectedScannedCodes, setSelectedScannedCodes] = useState(new Set());
-  const [isScanning, setIsScanning] = useState(false);
-  const [isScanImporting, setIsScanImporting] = useState(false);
   const [scanImportProgress, setScanImportProgress] = useState({ current: 0, total: 0, success: 0, failed: 0 });
   const [scanProgress, setScanProgress] = useState({ stage: 'ocr', current: 0, total: 0 });
   const [isOcrScan, setIsOcrScan] = useState(false);
