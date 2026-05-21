@@ -259,7 +259,7 @@ export default function HomePage() {
       const w = parsed?.pcContainerWidth;
       const num = Number(w);
       if (Number.isFinite(num)) {
-        setContainerWidth(Math.min(2000, Math.max(600, num)));
+        setContainerWidth(Math.min(window.innerWidth, Math.max(600, num)));
       }
       if (typeof parsed?.showMarketIndexPc === 'boolean') setShowMarketIndexPc(parsed.showMarketIndexPc);
       if (typeof parsed?.showMarketIndexMobile === 'boolean') setShowMarketIndexMobile(parsed.showMarketIndexMobile);
@@ -5044,7 +5044,7 @@ export default function HomePage() {
     if (targetIsMobile) setShowGroupFundSearchMobile(nextShowGroupFundSearch);
     else setShowGroupFundSearchPc(nextShowGroupFundSearch);
 
-    const w = Math.min(2000, Math.max(600, Number(containerWidth) || 1200));
+    const w = Math.min(window.innerWidth, Math.max(600, Number(containerWidth) || 1200));
     setContainerWidth(w);
     try {
       const parsed = customSettings || {};
@@ -6336,7 +6336,7 @@ export default function HomePage() {
               }
             }
             if (typeof mergedSettings.pcContainerWidth === 'number' && Number.isFinite(mergedSettings.pcContainerWidth)) {
-              setContainerWidth(Math.min(2000, Math.max(600, mergedSettings.pcContainerWidth)));
+              setContainerWidth(Math.min(window.innerWidth, Math.max(600, mergedSettings.pcContainerWidth)));
             }
             if (typeof mergedSettings.showMarketIndexPc === 'boolean') setShowMarketIndexPc(mergedSettings.showMarketIndexPc);
             if (typeof mergedSettings.showMarketIndexMobile === 'boolean') setShowMarketIndexMobile(mergedSettings.showMarketIndexMobile);

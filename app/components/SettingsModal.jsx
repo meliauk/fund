@@ -33,8 +33,8 @@ export default function SettingsModal({onClose,
   const [localShowGroupFundSearchMobile, setLocalShowGroupFundSearchMobile] = useState(showGroupFundSearchMobile);
   const pageWidthTrackRef = useRef(null);
 
-  const clampedWidth = Math.min(2000, Math.max(600, Number(containerWidth) || 1200));
-  const pageWidthPercent = ((clampedWidth - 600) / (2000 - 600)) * 100;
+  const clampedWidth = Math.min(window.innerWidth, Math.max(600, Number(containerWidth) || 1200));
+  const pageWidthPercent = ((clampedWidth - 600) / (window.innerWidth - 600)) * 100;
 
   const updateWidthByClientX = (clientX) => {
     if (!pageWidthTrackRef.current || !setContainerWidth) return;
@@ -42,7 +42,7 @@ export default function SettingsModal({onClose,
     if (!rect.width) return;
     const ratio = (clientX - rect.left) / rect.width;
     const clampedRatio = Math.min(1, Math.max(0, ratio));
-    const rawWidth = 600 + clampedRatio * (2000 - 600);
+    const rawWidth = 600 + clampedRatio * (window.innerWidth - 600);
     const snapped = Math.round(rawWidth / 10) * 10;
     setContainerWidth(snapped);
   };
