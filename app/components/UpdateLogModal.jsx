@@ -7,7 +7,6 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from '@
 import { CloseIcon } from './Icons';
 import dayjs from 'dayjs';
 import { withRetry } from '@/app/lib/asyncHelper';
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 export default function UpdateLogModal({ open, onOpenChange }) {
   const isMobile = useIsMobile();
@@ -87,19 +86,12 @@ export default function UpdateLogModal({ open, onOpenChange }) {
         <DrawerContent className="glass" style={{ height: '85vh' }}>
           <DrawerHeader className="flex-shrink-0 flex flex-row items-center justify-between gap-2 space-y-0 px-5 pb-3 pt-4 text-left border-b border-[var(--border)]">
             <DrawerTitle className="text-base font-semibold text-[var(--text)]">更新日志</DrawerTitle>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DrawerClose
-                  className="icon-button border-none bg-transparent p-1"
-                  style={{ borderColor: 'transparent', backgroundColor: 'transparent' }}
-                >
-                  <CloseIcon width="20" height="20" />
-                </DrawerClose>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>关闭</p>
-              </TooltipContent>
-            </Tooltip>
+            <DrawerClose
+              className="icon-button border-none bg-transparent p-1"
+              style={{ borderColor: 'transparent', backgroundColor: 'transparent' }}
+            >
+              <CloseIcon width="20" height="20" />
+            </DrawerClose>
           </DrawerHeader>
           {content}
         </DrawerContent>

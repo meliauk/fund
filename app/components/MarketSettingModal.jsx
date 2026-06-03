@@ -12,7 +12,6 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from '@
 import { CloseIcon, MinusIcon, ResetIcon, SettingsIcon } from './Icons';
 import ConfirmModal from './ConfirmModal';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 function SortableIndexItem({ item, canRemove, onRemove }) {
   const isMobile = useIsMobile();
@@ -319,22 +318,15 @@ export default function MarketSettingModal({
               <SettingsIcon width="20" height="20" />
               <span>指数个性化设置</span>
             </DrawerTitle>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DrawerClose
-                  className="icon-button border-none bg-transparent p-1"
-                  style={{
-                    borderColor: 'transparent',
-                    backgroundColor: 'transparent'
-                  }}
-                >
-                  <CloseIcon width="20" height="20" />
-                </DrawerClose>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>关闭</p>
-              </TooltipContent>
-            </Tooltip>
+            <DrawerClose
+              className="icon-button border-none bg-transparent p-1"
+              style={{
+                borderColor: 'transparent',
+                backgroundColor: 'transparent'
+              }}
+            >
+              <CloseIcon width="20" height="20" />
+            </DrawerClose>
           </DrawerHeader>
           <div className="flex-1 overflow-y-auto">{body}</div>
         </DrawerContent>
@@ -389,21 +381,14 @@ export default function MarketSettingModal({
                 <SettingsIcon width="20" height="20" />
                 <span>指数个性化设置</span>
               </div>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="icon-button"
-                    onClick={onClose}
-                    style={{ border: 'none', background: 'transparent' }}
-                  >
-                    <CloseIcon width="20" height="20" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>关闭</p>
-                </TooltipContent>
-              </Tooltip>
+              <button
+                type="button"
+                className="icon-button"
+                onClick={onClose}
+                style={{ border: 'none', background: 'transparent' }}
+              >
+                <CloseIcon width="20" height="20" />
+              </button>
             </div>
             <div className="pc-table-setting-body">{body}</div>
           </motion.aside>

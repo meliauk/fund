@@ -3,7 +3,6 @@
 import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
 import FundCard from './FundCard';
 import { CloseIcon } from './Icons';
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 /**
  * 移动端基金详情底部 Drawer 弹框
@@ -62,19 +61,12 @@ export default function MobileFundCardDrawer({
       >
         <DrawerHeader className="flex-shrink-0 flex flex-row items-center justify-between gap-2 space-y-0 px-5 pb-4 pt-2 text-left">
           <DrawerTitle className="text-base font-semibold text-[var(--text)]">基金详情</DrawerTitle>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <DrawerClose
-                className="icon-button border-none bg-transparent p-1"
-                style={{ borderColor: 'transparent', backgroundColor: 'transparent' }}
-              >
-                <CloseIcon width="20" height="20" />
-              </DrawerClose>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>关闭</p>
-            </TooltipContent>
-          </Tooltip>
+          <DrawerClose
+            className="icon-button border-none bg-transparent p-1"
+            style={{ borderColor: 'transparent', backgroundColor: 'transparent' }}
+          >
+            <CloseIcon width="20" height="20" />
+          </DrawerClose>
         </DrawerHeader>
         <div
           className="flex-1 min-h-0 overflow-y-auto px-5 pb-8 pt-0 scrollbar-y-styled"

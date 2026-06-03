@@ -13,7 +13,6 @@ import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle } from '@
 import { CloseIcon } from './Icons';
 import FitText from './FitText';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 dayjs.locale('zh-cn');
 
@@ -452,19 +451,12 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
         >
           <DrawerHeader className="flex-shrink-0 flex flex-row items-center justify-between gap-2 space-y-0 px-5 pb-3 pt-2 text-left">
             <DrawerTitle className="text-base font-semibold text-[var(--text)]">我的收益</DrawerTitle>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DrawerClose
-                  className="icon-button border-none bg-transparent p-1"
-                  style={{ borderColor: 'transparent', backgroundColor: 'transparent' }}
-                >
-                  <CloseIcon width="20" height="20" />
-                </DrawerClose>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>关闭</p>
-              </TooltipContent>
-            </Tooltip>
+            <DrawerClose
+              className="icon-button border-none bg-transparent p-1"
+              style={{ borderColor: 'transparent', backgroundColor: 'transparent' }}
+            >
+              <CloseIcon width="20" height="20" />
+            </DrawerClose>
           </DrawerHeader>
           {content}
         </DrawerContent>
@@ -482,21 +474,11 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
       >
         <DialogHeader className="flex-shrink-0 flex flex-row items-center justify-between gap-2 space-y-0 px-5 pb-3 pt-4 text-left border-b border-[var(--border)]">
           <DialogTitle className="text-base font-semibold text-[var(--text)]">我的收益</DialogTitle>
-          <DialogClose asChild>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="icon-button border-none bg-transparent p-1"
-                  style={{ borderColor: 'transparent', backgroundColor: 'transparent' }}
-                >
-                  <CloseIcon width="20" height="20" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>关闭</p>
-              </TooltipContent>
-            </Tooltip>
+          <DialogClose
+            className="icon-button border-none bg-transparent p-1"
+            style={{ borderColor: 'transparent', backgroundColor: 'transparent' }}
+          >
+            <CloseIcon width="20" height="20" />
           </DialogClose>
         </DialogHeader>
         {content}
