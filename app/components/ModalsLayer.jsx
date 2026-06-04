@@ -720,6 +720,7 @@ export default function ModalsLayer({ callbacksRef }) {
               }))
               .filter((x) => x.name)}
             onAddPoolTag={cb.current.handleAddPoolTag}
+            onUpdateGlobalTag={cb.current.handleUpdateGlobalTag}
             onDeleteGlobalTag={cb.current.handleDeleteGlobalTag}
             getTagUsageLabels={cb.current.getTagUsageLabels}
           />

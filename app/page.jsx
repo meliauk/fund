@@ -2152,6 +2152,32 @@ export default function HomePage() {
     [storageHelper]
   );
 
+  /** 更新全局标签（如名称、主题），影响所有使用该标签的基金 */
+  const handleUpdateGlobalTag = useCallback(
+    (tagId, payload) => {
+      const id = String(tagId ?? '').trim();
+      const name = String(payload?.name ?? '').trim();
+      const theme = String(payload?.theme ?? '').trim() || DEFAULT_FUND_TAG_THEME;
+      if (!id || !name) return;
+
+      setFundTagRecords((prev) => {
+        const next = prev.map((r) => {
+          if (String(r.id).trim() === id) {
+            return sanitizeTagRowForStorage({
+              ...r,
+              name,
+              theme
+            });
+          }
+          return r;
+        });
+        storageHelper.setItem('tags', JSON.stringify(next));
+        return next;
+      });
+    },
+    [storageHelper]
+  );
+
   /** 删除前展示：该标签关联的基金文案列表（按标签 id） */
   const getTagUsageLabels = useCallback(
     (tagId) => {
@@ -2167,6 +2193,14 @@ export default function HomePage() {
     },
     [fundTagRecords, funds]
   );
+
+  // 当全局标签变化且标签编辑弹框处于打开状态时，触发弹框层的重新渲染，以便底部可选标签池能立即展示最新内容
+  useEffect(() => {
+    const ms = useModalStore.getState();
+    if (ms.fundTagsEdit?.open) {
+      useModalStore.setState({ fundTagsEdit: { ...ms.fundTagsEdit, _tick: Date.now() } });
+    }
+  }, [fundTagRecords]);
 
   const applyViewMode = useCallback(
     (mode) => {
@@ -4257,6 +4291,7 @@ export default function HomePage() {
     handleSaveFundTags,
     handleAddPoolTag,
     handleDeleteGlobalTag,
+    handleUpdateGlobalTag,
     getTagUsageLabels,
     handleMoveFunds,
     handleMergeAllGroupTransactionsToCurrent,

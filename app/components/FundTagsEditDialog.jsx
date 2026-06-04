@@ -3,7 +3,7 @@ import { useIsMobile } from '@/app/hooks/useIsMobile';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Plus, Tag, X } from 'lucide-react';
+import { Plus, Tag, X, Pencil } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
@@ -11,6 +11,7 @@ import ConfirmModal from './ConfirmModal';
 import { CloseIcon } from './Icons';
 import { cn } from '@/lib/utils';
 import AddTagDialog from './AddTagDialog';
+import EditTagDialog from './EditTagDialog';
 import { TAG_THEME_OPTIONS } from '@/app/constants';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
@@ -54,11 +55,13 @@ export default function FundTagsEditDialog({
   recommendedTagItems = [],
   onAddPoolTag,
   onDeleteGlobalTag,
+  onUpdateGlobalTag,
   getTagUsageLabels
 }) {
   const isMobile = useIsMobile();
   const [draft, setDraft] = useState(() => normalizeTagDraft(tags));
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editTagData, setEditTagData] = useState(null);
   /** 'fund'：加到当前基金已选；'pool'：仅写入全局可选池 */
   const [addDialogPurpose, setAddDialogPurpose] = useState('fund');
   const [optionalEditMode, setOptionalEditMode] = useState(false);
@@ -132,6 +135,7 @@ export default function FundTagsEditDialog({
     setDraft(normalizeTagDraft(tags));
     setOptionalEditMode(false);
     setDeleteConfirm(null);
+    setEditTagData(null);
     setAddDialogPurpose('fund');
     optionalPickLockRef.current = false;
     // 仅在打开或切换基金时从 props 同步；不把 tags 列入依赖，避免父级刷新覆盖未提交的编辑
@@ -309,27 +313,46 @@ export default function FundTagsEditDialog({
 
             if (optionalEditMode) {
               return (
-                <Tooltip key={poolTagId || `opt-${itemIndex}`}>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="inline-flex"
-                      aria-label={`删除标签 ${label}`}
-                      onClick={() => requestDeleteOptionalTag(poolTagId, label)}
-                    >
-                      <Badge
-                        className={cn('cursor-pointer font-normal text-[13px]', themeClass)}
-                        variant={isDefault ? 'outline' : 'default'}
-                      >
-                        {label}
-                        <X data-icon="inline-end" className="h-3 w-3 shrink-0" />
-                      </Badge>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className="z-[9999]">
-                    <p>删除标签</p>
-                  </TooltipContent>
-                </Tooltip>
+                <div key={poolTagId || `opt-${itemIndex}`} className="inline-flex">
+                  <Badge
+                    className={cn('font-normal text-[13px] gap-1 px-2.5', themeClass)}
+                    variant={isDefault ? 'outline' : 'default'}
+                  >
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label={`编辑标签 ${label}`}
+                          className="hover:opacity-75 cursor-pointer flex items-center justify-center -ml-0.5"
+                          onClick={() => setEditTagData({ id: poolTagId, name: label, theme: itemTheme })}
+                        >
+                          <Pencil className="h-3 w-3 shrink-0" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="z-[9999]">
+                        <p>编辑标签</p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <span>{label}</span>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label={`删除标签 ${label}`}
+                          className="hover:opacity-75 cursor-pointer flex items-center justify-center -mr-0.5"
+                          onClick={() => requestDeleteOptionalTag(poolTagId, label)}
+                        >
+                          <X className="h-3 w-3 shrink-0" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="z-[9999]">
+                        <p>删除标签</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </Badge>
+                </div>
               );
             }
 
@@ -374,6 +397,22 @@ export default function FundTagsEditDialog({
       </div>
 
       <AddTagDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} onAdd={handleAddDialogAdd} />
+      <EditTagDialog
+        open={!!editTagData}
+        onOpenChange={(v) => {
+          if (!v) setEditTagData(null);
+        }}
+        initialName={editTagData?.name || ''}
+        initialTheme={editTagData?.theme || 'default'}
+        onEdit={(payload) => {
+          if (editTagData?.id) {
+            onUpdateGlobalTag?.(editTagData.id, payload);
+            setDraft((prev) =>
+              prev.map((t) => (t.id === editTagData.id ? { ...t, name: payload.name, theme: payload.theme } : t))
+            );
+          }
+        }}
+      />
     </div>
   );
 
