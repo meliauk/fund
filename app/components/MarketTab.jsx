@@ -567,10 +567,12 @@ export default function MarketTab({ onAddFund, getFundCardProps, isActive }) {
                   cursor: default;
                   border-bottom: none !important;
                 }
-                .market-ranking-table-row:hover,
-                .market-ranking-table-row.row-even:hover {
-                  --row-bg: var(--table-row-hover-bg);
-                  background-color: var(--table-row-hover-bg) !important;
+                @media (min-width: 640px) {
+                  .market-ranking-table-row:hover,
+                  .market-ranking-table-row.row-even:hover {
+                    --row-bg: var(--table-row-hover-bg);
+                    background-color: var(--table-row-hover-bg) !important;
+                  }
                 }
                 .market-ranking-table-row:nth-child(even),
                 .market-ranking-table-row.row-even {
