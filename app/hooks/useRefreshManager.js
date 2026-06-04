@@ -10,7 +10,7 @@ import { useStorageStore, storageStore } from '../stores';
 import { recordValuation, setValuationSeries as persistValuationSeries } from '../lib/valuationTimeseries';
 import { DAILY_EARNINGS_SCOPE_ALL } from '@/app/constants';
 import { asyncPool } from '../lib/asyncHelper';
-import { fetchFundData, fetchNetValueRangeFromTrend, fetchFundDividends } from '../api/fund';
+import { fetchFundData, fetchNetValueRangeFromTrend, fetchFundDividends, fetchFundConfirmDays } from '../api/fund';
 import { TZ } from '../lib/fundHelpers';
 import { getQueryClient } from '../lib/get-query-client';
 
@@ -236,6 +236,17 @@ export function useRefreshManager({ scheduleDcaTrades, processPendingQueue, devi
 
           updated.push(data);
 
+          // 按需获取基金确认天数（仅在 localStorage 中无缓存时请求）
+          try {
+            const storedForConfirm = getStoredFundSnapshot(data.code);
+            if (storedForConfirm?.confirmDays == null) {
+              const days = await fetchFundConfirmDays(data.code);
+              if (days != null) data.confirmDays = days;
+            }
+          } catch (e) {
+            // 获取确认天数失败不影响主流程
+          }
+
           // 估值时序记录
           const storedFund = getStoredFundSnapshot(data.code);
           const fundDs = storedFund?.dataSource || 1;
@@ -444,6 +455,7 @@ export function useRefreshManager({ scheduleDcaTrades, processPendingQueue, devi
               if (f.addBaseDate != null) merged.addBaseDate = f.addBaseDate;
               if (f.dataSource != null) merged.dataSource = f.dataSource;
               if (f.showImageChart !== undefined) merged.showImageChart = f.showImageChart;
+              if (f.confirmDays != null) merged.confirmDays = f.confirmDays;
               if (merged.addedAt == null || merged.addBaseNav == null || merged.addBaseDate == null) {
                 const snap = getAddBaseSnapshotFromFund(merged);
                 if (merged.addedAt == null) merged.addedAt = Date.now();

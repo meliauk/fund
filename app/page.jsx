@@ -101,7 +101,8 @@ import {
   serializeTagRecordsForCompare,
   cloneHoldingDeep,
   seedGroupHoldingsFromGlobal,
-  migrateDcaPlansToScoped
+  migrateDcaPlansToScoped,
+  isNavUpdated
 } from './lib/fundHelpers';
 
 import { dedupeByCode, normalizeCode, cleanCodeArray } from './lib/normalize';
@@ -904,7 +905,7 @@ export default function HomePage() {
       }
       if (sortBy === 'estimateProfit') {
         const getEstimateProfitValue = (f) => {
-          const hasTodayData = f.jzrq === todayStr;
+          const hasTodayData = isNavUpdated(f.jzrq, todayStr, f.confirmDays);
           const holding = holdingsForTabWithLinked[f.code];
           const profit = getHoldingProfitForTab(f, holding);
           const total = profit ? profit.profitTotal : null;
@@ -1131,7 +1132,7 @@ export default function HomePage() {
   // PC 端表格数据（用于 PcFundTable）
   const pcFundTableData = useMemo(() => {
     return displayFunds.map((f) => {
-      const hasTodayData = f.jzrq === todayStr;
+      const hasTodayData = isNavUpdated(f.jzrq, todayStr, f.confirmDays);
       const latestNav =
         f.dwjz != null && f.dwjz !== ''
           ? typeof f.dwjz === 'number'
@@ -1319,7 +1320,7 @@ export default function HomePage() {
         fundName: f.name,
         fundTags,
         isHoldingLinked: !!isHoldingLinked,
-        isUpdated: f.jzrq === todayStr,
+        isUpdated: isNavUpdated(f.jzrq, todayStr, f.confirmDays),
         hasDca: dcaPlansForTab[f.code]?.enabled === true,
         hasPending: pendingCodesForTab.has(f.code),
         latestNav,

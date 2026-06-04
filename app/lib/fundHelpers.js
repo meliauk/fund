@@ -204,3 +204,25 @@ export function migrateDcaPlansToScoped(raw) {
   }
   return { [DCA_SCOPE_GLOBAL]: { ...raw } };
 }
+
+/**
+ * 判断基金净值是否"已更新"（结合确认天数）。
+ *
+ * - confirmDays = 1（普通 A 股基金）：严格要求 jzrq === todayStr
+ * - confirmDays >= 2（QDII 等跨境基金）：净值日期在 (confirmDays + 2) 个自然日内
+ *   视为"已更新"，+2 用于覆盖周末（如周一查看周五出的净值，日历间隔 3 天）。
+ *
+ * @param {string} jzrq - 基金净值日期，格式 YYYY-MM-DD
+ * @param {string} todayStr - 今天日期，格式 YYYY-MM-DD
+ * @param {number} [confirmDays=1] - 申赎确认天数（SSBCFMDATA）
+ * @returns {boolean}
+ */
+export function isNavUpdated(jzrq, todayStr, confirmDays) {
+  if (!isString(jzrq) || !jzrq) return false;
+  if (jzrq === todayStr) return true;
+  const days = Number(confirmDays) || 1;
+  if (days <= 1) return false;
+  // QDII 等延迟出净值的基金，允许净值日期落后 (confirmDays + 2) 个自然日
+  const diff = toTz(todayStr).diff(toTz(jzrq), 'day');
+  return diff > 0 && diff <= days + 2;
+}

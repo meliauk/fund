@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { isNumber, isString } from 'lodash';
 import { useStorageStore } from '../stores';
 import { useTradingDay } from './useTradingDay';
-import { formatDate, toTz } from '../lib/fundHelpers';
+import { formatDate, toTz, isNavUpdated } from '../lib/fundHelpers';
 
 /**
  * 基金持仓与当日/累计收益计算逻辑自定义 Hook
@@ -19,7 +19,7 @@ export function useHoldingProfit({ activeGroupId } = {}) {
 
       const txScope = scopeGroupIdOverride !== undefined ? scopeGroupIdOverride : activeGroupId;
 
-      const hasTodayData = fund.jzrq === todayStr;
+      const hasTodayData = isNavUpdated(fund.jzrq, todayStr, fund.confirmDays);
       const hasTodayValuation = isString(fund.gztime) && fund.gztime.startsWith(todayStr);
       const canCalcTodayProfit = hasTodayData || hasTodayValuation;
 

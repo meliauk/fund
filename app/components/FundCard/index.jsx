@@ -28,6 +28,7 @@ dayjs.extend(timezone);
 dayjs.extend(isSameOrAfter);
 
 import { DEFAULT_TZ } from '@/app/constants';
+import { isNavUpdated } from '@/app/lib/fundHelpers';
 const getBrowserTimeZone = () => {
   if (typeof Intl !== 'undefined' && Intl.DateTimeFormat) {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -457,14 +458,14 @@ export default function Index({
                 </span>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{f.jzrq === todayStr ? '今日净值已更新' : ''}</p>
+                <p>{isNavUpdated(f.jzrq, todayStr, f.confirmDays) ? '今日净值已更新' : ''}</p>
               </TooltipContent>
             </Tooltip>
             <span className="muted">
               #{f.code}
               {hasPending && <span className="pending-indicator">待</span>}
               {dcaPlans?.[f.code]?.enabled === true && <span className="dca-indicator">定</span>}
-              {f.jzrq === todayStr && <span className="updated-indicator">✓</span>}
+              {isNavUpdated(f.jzrq, todayStr, f.confirmDays) && <span className="updated-indicator">✓</span>}
               {fundTags.length > 0 && (
                 <span
                   style={{
@@ -573,7 +574,7 @@ export default function Index({
         ) : (
           <>
             {(() => {
-              const hasTodayData = f.jzrq === todayStr;
+              const hasTodayData = isNavUpdated(f.jzrq, todayStr, f.confirmDays);
               let isYesterdayChange = false;
               let isPreviousTradingDay = false;
               if (!hasTodayData && isString(f.jzrq)) {

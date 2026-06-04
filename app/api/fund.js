@@ -1182,6 +1182,42 @@ export async function fetchFundValuationBySource(code, dataSource = 1) {
   });
 }
 
+/**
+ * 获取基金申赎确认天数（SSBCFMDATA）
+ * 通过天天基金移动端 API FundMNBaseInfo 获取。
+ * - 返回 1 表示 T+1 确认（普通 A 股基金）
+ * - 返回 2 表示 T+2 确认（QDII 等跨境基金）
+ * - 返回 null 表示获取失败
+ *
+ * 结果通过 TanStack Query 缓存 24 小时（此属性极少变动）。
+ * @param {string} code - 基金代码
+ * @returns {Promise<number|null>}
+ */
+export const fetchFundConfirmDays = async (code) => {
+  const c = code != null ? String(code).trim() : '';
+  if (!c) return null;
+
+  const qc = getQueryClient();
+  try {
+    return await qc.fetchQuery({
+      queryKey: qk.fundConfirmDays(c),
+      queryFn: async () => {
+        const url = `https://fundmobapi.eastmoney.com/FundMNewApi/FundMNBaseInfo?FCODE=${c}&plat=Android&appType=ttjj&product=EFund&Version=1&deviceid=rtf${Date.now()}`;
+        const resp = await fetch(url);
+        if (!resp.ok) return null;
+        const json = await resp.json();
+        if (!json || !json.Success || !json.Datas) return null;
+        const raw = json.Datas.SSBCFMDATA;
+        const num = Number(raw);
+        return Number.isFinite(num) && num > 0 ? num : null;
+      },
+      staleTime: ONE_DAY_MS
+    });
+  } catch (e) {
+    return null;
+  }
+};
+
 export const fetchFundData = async (c, overrideDataSource) => {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     throw new Error('无浏览器环境');
