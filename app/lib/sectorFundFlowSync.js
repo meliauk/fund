@@ -183,6 +183,25 @@ function guessSectorType(secid) {
 // SectorFundFlowSync 类
 // ============================================================================
 
+/**
+ * 判断当前是否在 A 股交易时段（北京时间）
+ * 交易时段：工作日 09:30-11:30, 13:00-15:00
+ * @returns {boolean}
+ */
+function isTradingTime() {
+  const now = dayjs().tz(DEFAULT_TZ);
+  const dayOfWeek = now.day(); // 0=周日, 6=周六
+  // 周末不交易
+  if (dayOfWeek === 0 || dayOfWeek === 6) return false;
+
+  const minute = now.hour() * 60 + now.minute();
+  // 上午 09:30-11:50
+  if (minute >= 9 * 60 + 30 && minute < 11 * 60 + 50) return true;
+  // 下午 13:00-15:50
+  if (minute >= 13 * 60 && minute < 15 * 60 + 50) return true;
+  return false;
+}
+
 export class SectorFundFlowSync {
   /**
    * @param {object} options
@@ -210,6 +229,12 @@ export class SectorFundFlowSync {
     }
     if (!isSupabaseConfigured) {
       this.onLog('[SectorSync] Supabase 未配置，跳过同步');
+      return;
+    }
+
+    // 只在 A 股交易时段执行同步
+    if (!isTradingTime()) {
+      this.onLog('[SectorSync] 非交易时段，跳过同步');
       return;
     }
 
