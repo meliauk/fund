@@ -2706,7 +2706,9 @@ export default function HomePage() {
         setLoginInitialError('');
       }
       // 仅在明确的登录动作（SIGNED_IN）时检查冲突；INITIAL_SESSION（刷新页面等）不检查，直接以云端为准
-      fetchCloudConfig(session.user.id, isExplicitLogin);
+      fetchCloudConfig(session.user.id, isExplicitLogin, {
+        refreshAfterApply: event === 'INITIAL_SESSION'
+      });
     };
 
     supabase.auth.getSession().then(async ({ data, error }) => {

@@ -1174,8 +1174,9 @@ export function useSyncManager({ showToast, refreshAllRef, setTempSeconds, setFu
           const codes = Array.from(new Set(nextFunds.map((f) => f.code)));
           const localCodesSet = new Set(localFundsForMerge.map((f) => f?.code).filter(Boolean));
           const hasNewFunds = codes.some((code) => !localCodesSet.has(code));
+          const shouldRefreshAfterApply = options.refreshAfterApply || hasNewFunds;
 
-          if (hasNewFunds && typeof refreshAllRef.current === 'function') {
+          if (shouldRefreshAfterApply && typeof refreshAllRef.current === 'function') {
             await refreshAllRef.current(codes);
           }
           const currentUser = useUserStore.getState().user;
