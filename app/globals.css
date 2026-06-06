@@ -1305,7 +1305,7 @@ input[type='number'] {
 
 .tabs {
   display: flex;
-  gap: 4px;
+  gap: 3px;
   padding: 4px 0;
   background: transparent;
   border-radius: 0;
@@ -2050,7 +2050,7 @@ html::-webkit-scrollbar-thumb:active,
 }
 
 .tab {
-  padding: 0 10px;
+  padding: 0 8px;
   border-radius: 8px;
   border: none;
   background: transparent;
