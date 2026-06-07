@@ -91,3 +91,4 @@ fabric.properties
 
 # CLI
 cli/
+.agents/
