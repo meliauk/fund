@@ -2010,7 +2010,7 @@ html::-webkit-scrollbar-thumb:active,
     width: calc(100% + 32px);
     background: rgba(15, 23, 42, 0.9);
     margin: 0 -16px 16px -16px;
-    padding: 10px 16px;
+    padding: 10px 12px;
     border-bottom: 1px solid var(--border);
     backdrop-filter: blur(16px);
     display: flex;
