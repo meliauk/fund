@@ -628,15 +628,27 @@ export default function HomePage() {
         list.forEach((item) => {
           const date = item?.date ? String(item.date) : '';
           const earnings = Number(item?.earnings);
+          const baseCostAmount = Number(item?.baseCostAmount);
           if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
           if (!Number.isFinite(earnings)) return;
-          byDate.set(date, (byDate.get(date) ?? 0) + earnings);
+
+          const prev = byDate.get(date) || { earnings: 0, baseCostAmount: 0 };
+          prev.earnings += earnings;
+          if (Number.isFinite(baseCostAmount) && baseCostAmount > 0) {
+            prev.baseCostAmount += baseCostAmount;
+          }
+          byDate.set(date, prev);
         });
       });
     });
     return [...byDate.entries()]
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([date, earnings]) => ({ date, earnings, rate: null }));
+      .map(([date, data]) => ({
+        date,
+        earnings: data.earnings,
+        baseCostAmount: data.baseCostAmount > 0 ? data.baseCostAmount : null,
+        rate: null
+      }));
   }, [fundDailyEarnings]);
 
   const holdingsForTabWithLinked = useMemo(() => {

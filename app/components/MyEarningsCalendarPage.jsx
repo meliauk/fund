@@ -19,11 +19,12 @@ dayjs.locale('zh-cn');
 
 const SWIPE_THRESHOLD = 72;
 
-function formatEarnings(v, masked) {
+function formatEarnings(v, masked, isRate = false) {
   if (masked) return '***';
   if (!isNumber(v) || !Number.isFinite(v)) return '—';
   const sign = v > 0 ? '+' : v < 0 ? '-' : '';
-  return `${sign}${Math.abs(v).toFixed(2)}`;
+  const formatted = Math.abs(v).toFixed(2);
+  return isRate ? `${sign}${formatted}%` : `${sign}${formatted}`;
 }
 
 function earningsClass(v) {
@@ -42,6 +43,9 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
   const hasData = isArray(series) && series.length > 0;
 
   const [viewTab, setViewTab] = useState('day');
+  const [displayMode, setDisplayMode] = useState('amount');
+  const activeDisplayMode = viewTab === 'day' ? displayMode : 'amount';
+
   const [cursorMonth, setCursorMonth] = useState(() => dayjs().startOf('month'));
   const [cursorYear, setCursorYear] = useState(() => dayjs().year());
 
@@ -50,7 +54,16 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
     if (!isArray(series)) return map;
     for (const row of series) {
       if (row?.date && isNumber(row.earnings) && Number.isFinite(row.earnings)) {
-        map.set(row.date, row.earnings);
+        let rate = row.rate;
+        if (!isNumber(rate) || !Number.isFinite(rate)) {
+          const cost = Number(row.baseCostAmount);
+          if (Number.isFinite(cost) && cost > 0) {
+            rate = (row.earnings / cost) * 100;
+          } else {
+            rate = null;
+          }
+        }
+        map.set(row.date, { amount: row.earnings, rate });
       }
     }
     return map;
@@ -81,16 +94,29 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
   }, [series]);
 
   /** 按日视图：当前展示月的收益合计 */
-  const dayViewMonthTotal = useMemo(() => {
+  const dayViewMonthTotalAmount = useMemo(() => {
     const prefix = cursorMonth.format('YYYY-MM');
     let sum = 0;
-    for (const [d, v] of earningsByDate.entries()) {
-      if (d.startsWith(prefix) && isNumber(v) && Number.isFinite(v)) {
-        sum += v;
+    for (const [d, obj] of earningsByDate.entries()) {
+      if (d.startsWith(prefix) && isNumber(obj.amount) && Number.isFinite(obj.amount)) {
+        sum += obj.amount;
       }
     }
     return sum;
   }, [earningsByDate, cursorMonth]);
+
+  const dayViewMonthTotalRate = useMemo(() => {
+    const prefix = cursorMonth.format('YYYY-MM');
+    let sum = 0;
+    for (const [d, obj] of earningsByDate.entries()) {
+      if (d.startsWith(prefix) && isNumber(obj.rate) && Number.isFinite(obj.rate)) {
+        sum += obj.rate;
+      }
+    }
+    return sum;
+  }, [earningsByDate, cursorMonth]);
+
+  const dayViewMonthTotal = activeDisplayMode === 'rate' ? dayViewMonthTotalRate : dayViewMonthTotalAmount;
 
   const goPrev = useCallback(() => {
     if (viewTab === 'day') setCursorMonth((m) => m.subtract(1, 'month'));
@@ -211,7 +237,7 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
           </div>
         ) : (
           <>
-            <div className="trend-range-bar mb-2 shrink-0">
+            <div className="trend-range-bar mb-2 shrink-0 items-center relative">
               {[
                 { id: 'day', label: '日' },
                 { id: 'month', label: '月' },
@@ -231,6 +257,32 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
                   {t.label}
                 </button>
               ))}
+
+              <div className="w-[1px] h-3.5 mx-0.5 shrink-0 bg-[var(--border)] opacity-60 rounded-full" />
+
+              {[
+                { id: 'amount', label: '金额' },
+                { id: 'rate', label: '收益率' }
+              ].map((t) => {
+                const disabled = viewTab !== 'day';
+                const isActive = activeDisplayMode === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={`trend-range-btn ${isActive && !disabled ? 'active' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    disabled={disabled}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!disabled) {
+                        setDisplayMode(t.id);
+                      }
+                    }}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
             </div>
 
             <div className="my-earnings-detail my-earnings-detail-summary-top shrink-0">
@@ -243,7 +295,7 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
                     minFontSize={14}
                     className={cn('my-earnings-detail-value', earningsClass(dayViewMonthTotal))}
                   >
-                    {formatEarnings(dayViewMonthTotal, masked)}
+                    {formatEarnings(dayViewMonthTotal, masked, activeDisplayMode === 'rate')}
                   </FitText>
                 </>
               )}
@@ -321,18 +373,24 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
                           const isToday = !isOutside && dayjs(day.date).isSame(dayjs(), 'day');
                           const isFutureDay = dayjs(day.date).startOf('day').isAfter(dayjs().startOf('day'));
 
-                          const dayEarnings = !isOutside ? earningsByDate.get(key) : undefined;
-                          const hasEarnings = isNumber(dayEarnings) && Number.isFinite(dayEarnings);
+                          const dayData = !isOutside ? earningsByDate.get(key) : undefined;
+                          const dayAmount = dayData?.amount;
+                          const dayRate = dayData?.rate;
 
-                          const earningsTone =
-                            hasEarnings && dayEarnings > 0 ? 'up' : hasEarnings && dayEarnings < 0 ? 'down' : 'zero';
+                          const hasAmount = isNumber(dayAmount) && Number.isFinite(dayAmount);
+                          const hasRate = isNumber(dayRate) && Number.isFinite(dayRate);
+
+                          const val = activeDisplayMode === 'rate' ? dayRate : dayAmount;
+                          const hasVal = activeDisplayMode === 'rate' ? hasRate : hasAmount;
+
+                          const earningsTone = hasVal && val > 0 ? 'up' : hasVal && val < 0 ? 'down' : 'zero';
 
                           const showEarningsRow = !isFutureDay;
                           const bgToneClass = showEarningsRow
-                            ? hasEarnings
-                              ? dayEarnings > 0
+                            ? hasVal
+                              ? val > 0
                                 ? '!bg-[color-mix(in_srgb,var(--danger)_18%,transparent)] hover:!bg-[color-mix(in_srgb,var(--danger)_24%,transparent)]'
-                                : dayEarnings < 0
+                                : val < 0
                                   ? '!bg-[color-mix(in_srgb,var(--success)_18%,transparent)] hover:!bg-[color-mix(in_srgb,var(--success)_24%,transparent)]'
                                   : '!bg-[color-mix(in_srgb,var(--muted-foreground)_8%,transparent)] hover:!bg-[color-mix(in_srgb,var(--muted-foreground)_12%,transparent)]'
                               : '!bg-[color-mix(in_srgb,var(--muted-foreground)_8%,transparent)] hover:!bg-[color-mix(in_srgb,var(--muted-foreground)_12%,transparent)]'
@@ -373,7 +431,7 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
                                     earningsTone === 'zero' && 'my-earnings-cell-earnings-zero'
                                   )}
                                 >
-                                  {formatEarnings(hasEarnings ? dayEarnings : 0, masked)}
+                                  {formatEarnings(hasVal ? val : 0, masked, activeDisplayMode === 'rate')}
                                 </FitText>
                               )}
                             </CalendarDayButton>
