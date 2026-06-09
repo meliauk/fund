@@ -960,14 +960,23 @@ export default function HomePage() {
           if (!isArray(list) || list.length === 0) return null;
           let matchedDaily = null;
           if (isString(jzrq)) {
-            for (const item of list) {
-              if (item?.date === jzrq) {
-                matchedDaily = item;
-                break;
+            if (jzrq === todayStr) {
+              for (let i = list.length - 1; i >= 0; i--) {
+                if (list[i]?.date && list[i].date < todayStr) {
+                  matchedDaily = list[i];
+                  break;
+                }
+              }
+            } else {
+              for (const item of list) {
+                if (item?.date === jzrq) {
+                  matchedDaily = item;
+                  break;
+                }
               }
             }
           }
-          if (!matchedDaily) matchedDaily = list[list.length - 1];
+          if (!matchedDaily && jzrq !== todayStr) matchedDaily = list[list.length - 1];
           return matchedDaily && Number.isFinite(Number(matchedDaily.earnings)) ? Number(matchedDaily.earnings) : null;
         };
         const valA = getYesterdayProfit(a.code, a.jzrq);
@@ -1217,31 +1226,51 @@ export default function HomePage() {
 
       const latestNavDateStr = isString(f.jzrq) ? f.jzrq : '';
       const dailyMeta = latestDailyByCode?.[f.code];
-      const matchedDaily =
-        (latestNavDateStr ? dailyMeta?.byDate?.get(latestNavDateStr) || null : null) || dailyMeta?.last || null;
+      const dailyList = currentFundDailyEarnings?.[f.code];
+
+      // 解析昨日收益对应的记录（避免当晚更新今日净值后，“昨日收益”显示成“今日收益”）
+      let yesterdayMatchedDaily = null;
+      if (isArray(dailyList) && dailyList.length > 0) {
+        if (latestNavDateStr === todayStr) {
+          // 如果最新净值日期已更新为今天，昨日收益取今天之前的最后一个记录
+          for (let i = dailyList.length - 1; i >= 0; i--) {
+            if (dailyList[i]?.date && dailyList[i].date < todayStr) {
+              yesterdayMatchedDaily = dailyList[i];
+              break;
+            }
+          }
+        } else {
+          // 否则取最新净值日期对应的记录或最后一个记录
+          yesterdayMatchedDaily =
+            (latestNavDateStr ? dailyMeta?.byDate?.get(latestNavDateStr) || null : null) || dailyMeta?.last || null;
+        }
+      }
+
       const yesterdayProfitVal =
-        matchedDaily && Number.isFinite(Number(matchedDaily.earnings)) ? Number(matchedDaily.earnings) : null;
+        yesterdayMatchedDaily && Number.isFinite(Number(yesterdayMatchedDaily.earnings))
+          ? Number(yesterdayMatchedDaily.earnings)
+          : null;
       const yesterdayProfit =
         yesterdayProfitVal == null
           ? ''
           : `${yesterdayProfitVal > 0 ? '+' : yesterdayProfitVal < 0 ? '-' : ''}${Math.abs(yesterdayProfitVal).toFixed(2)}`;
       const dailyBaseCostAmount =
-        matchedDaily &&
-        matchedDaily.baseCostAmount != null &&
-        matchedDaily.baseCostAmount !== '' &&
-        Number.isFinite(Number(matchedDaily.baseCostAmount))
-          ? Number(matchedDaily.baseCostAmount)
+        yesterdayMatchedDaily &&
+        yesterdayMatchedDaily.baseCostAmount != null &&
+        yesterdayMatchedDaily.baseCostAmount !== '' &&
+        Number.isFinite(Number(yesterdayMatchedDaily.baseCostAmount))
+          ? Number(yesterdayMatchedDaily.baseCostAmount)
           : null;
       const derivedRateFromSnapshot =
         yesterdayProfitVal != null && dailyBaseCostAmount != null && dailyBaseCostAmount > 0
           ? (yesterdayProfitVal / dailyBaseCostAmount) * 100
           : null;
       const dailyRate =
-        matchedDaily &&
-        matchedDaily.rate != null &&
-        matchedDaily.rate !== '' &&
-        Number.isFinite(Number(matchedDaily.rate))
-          ? Number(matchedDaily.rate)
+        yesterdayMatchedDaily &&
+        yesterdayMatchedDaily.rate != null &&
+        yesterdayMatchedDaily.rate !== '' &&
+        Number.isFinite(Number(yesterdayMatchedDaily.rate))
+          ? Number(yesterdayMatchedDaily.rate)
           : derivedRateFromSnapshot;
       const yesterdayProfitPercentLine =
         dailyRate != null
