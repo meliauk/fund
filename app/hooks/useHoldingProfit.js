@@ -20,6 +20,7 @@ export function useHoldingProfit({ activeGroupId } = {}) {
 
       const txScope = scopeGroupIdOverride !== undefined ? scopeGroupIdOverride : activeGroupId;
 
+      const hasExactTodayData = isString(fund.jzrq) && fund.jzrq === todayStr;
       const hasTodayData = isNavUpdated(fund.jzrq, todayStr, fund.confirmDays);
       const hasTodayValuation = isString(fund.gztime) && fund.gztime.startsWith(todayStr);
       const canCalcTodayProfit = hasTodayData || hasTodayValuation;
@@ -164,8 +165,9 @@ export function useHoldingProfit({ activeGroupId } = {}) {
         effectiveShare += extraShares;
       }
 
-      // 如果是交易日且9点以后，且今日净值未出，则强制使用估值（隐藏涨跌幅列模式）
-      const useValuation = isTradingDay && !hasTodayData;
+      // QDII 等基金净值日期会延迟，isNavUpdated 可能把近几日净值视为已更新。
+      // 当存在今天估值时，优先用今天估值计算当日收益，避免用延迟确认净值覆盖估算口径。
+      const useValuation = hasTodayValuation && !hasExactTodayData ? true : isTradingDay && !hasTodayData;
 
       let currentNav;
       let profitToday;
