@@ -7,7 +7,7 @@ import { CloseIcon, PlusIcon } from './Icons';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { getTagThemeBadgeProps } from './AddTagDialog';
-import { cn } from '@/lib/utils';
+import { cn, formatMoney } from '@/lib/utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function AddFundToGroupModal({
@@ -188,7 +188,7 @@ export default function AddFundToGroupModal({
                       <div className="muted" style={{ fontSize: '12px', marginTop: 2 }}>
                         持仓金额：
                         <span style={{ color: 'var(--foreground)', fontWeight: 500 }}>
-                          {getHoldingAmount(fund).toFixed(2)}
+                          {formatMoney(getHoldingAmount(fund))}
                         </span>
                       </div>
                     )}

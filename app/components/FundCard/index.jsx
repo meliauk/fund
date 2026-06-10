@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
+import { cn, formatMoney } from '@/lib/utils';
 import { useStorageStore } from '@/app/stores';
 import { fetchFundHoldings, fetchFundData } from '@/app/api/fund';
 import { useIsMobile } from '@/app/hooks/useIsMobile';
@@ -88,10 +88,7 @@ function MoreSection({
 
   const holdingCostValue =
     holding && isNumber(holding.cost) && isNumber(holding.share) ? holding.cost * holding.share : null;
-  const holdingCost =
-    holdingCostValue == null
-      ? '—'
-      : `¥${Number(holdingCostValue).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const holdingCost = holdingCostValue == null ? '—' : `¥${formatMoney(holdingCostValue)}`;
 
   const holdingAmount = profit?.amount;
   const holdingRatioValue =
@@ -704,11 +701,7 @@ export default function Index({
                     <span className="label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       持仓金额 <SettingsIcon width="12" height="12" style={{ opacity: 0.7 }} />
                     </span>
-                    <span className="value">
-                      {masked
-                        ? '******'
-                        : `${Number(profit.amount).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                    </span>
+                    <span className="value">{masked ? '******' : `${formatMoney(profit.amount)}`}</span>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -767,7 +760,7 @@ export default function Index({
                                     ? (profit.profitToday / (holding.cost * holding.share)) * 100
                                     : 0
                                 ).toFixed(2)}%`
-                              : `${Math.abs(profit.profitToday).toFixed(2)}`}
+                              : `${formatMoney(Math.abs(profit.profitToday))}`}
                           </>
                         )}
                       </span>
@@ -817,7 +810,7 @@ export default function Index({
                                     ? (profit.profitTotal / (holding.cost * holding.share)) * 100
                                     : 0
                                 ).toFixed(2)}%`
-                              : `${Math.abs(profit.profitTotal).toFixed(2)}`}
+                              : `${formatMoney(Math.abs(profit.profitTotal))}`}
                           </>
                         )}
                       </span>

@@ -14,6 +14,7 @@ import { Line } from 'react-chartjs-2';
 import { isArray, isNumber } from 'lodash';
 import FundDailyEarningsDetailModal from './FundDailyEarningsDetailModal';
 import { Tooltip as UITooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { formatMoney } from '@/lib/utils';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ChartTooltip, Filler);
 
@@ -315,7 +316,7 @@ export default function FundDailyEarnings({ series = [], theme = 'dark', masked 
               color: masked ? 'inherit' : totalEarnings >= 0 ? chartColors.danger : chartColors.success
             }}
           >
-            {masked ? '***' : `${totalEarnings >= 0 ? '+' : '-'}${Math.abs(totalEarnings).toFixed(2)}`}
+            {masked ? '***' : `${totalEarnings >= 0 ? '+' : '-'}${formatMoney(Math.abs(totalEarnings))}`}
           </span>
         </span>
       </div>
@@ -370,7 +371,7 @@ export default function FundDailyEarnings({ series = [], theme = 'dark', masked 
               const isValid = isNumber(v) && Number.isFinite(v);
               const sign = isValid && v > 0 ? '+' : isValid && v < 0 ? '-' : '';
               const cls = !isValid || masked ? '' : v > 0 ? 'up' : v < 0 ? 'down' : '';
-              const text = masked ? '***' : isValid ? `${sign}${Math.abs(v).toFixed(2)}` : '—';
+              const text = masked ? '***' : isValid ? `${sign}${formatMoney(Math.abs(v))}` : '—';
               const rv = row?.rate;
               const snapshotCost = Number(row?.baseCostAmount);
               const derivedRate =

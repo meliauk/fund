@@ -7,6 +7,7 @@ import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-tabl
 import { CloseIcon } from './Icons';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
+import { formatMoney } from '@/lib/utils';
 
 function buildTableRows(series) {
   if (!isArray(series) || series.length === 0) return [];
@@ -51,7 +52,7 @@ export default function FundDailyEarningsDetailModal({
           return (
             <span className={cls}>
               {sign}
-              {Math.abs(v).toFixed(2)}
+              {formatMoney(Math.abs(v))}
             </span>
           );
         },

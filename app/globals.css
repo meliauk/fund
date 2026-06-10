@@ -75,6 +75,7 @@ html {
   --my-earnings-hero-text: var(--foreground);
   --my-earnings-hero-muted: color-mix(in srgb, var(--foreground) 70%, transparent);
   --my-earnings-card-bg: color-mix(in srgb, var(--card) 88%, var(--primary) 4%);
+  --my-earnings-calendar-card-bg: #0003;
   --my-earnings-card-border: var(--border);
   --my-earnings-card-shadow: 0 16px 48px rgba(0, 0, 0, 0.42);
   --my-earnings-calendar-accent: var(--primary);
@@ -141,6 +142,7 @@ html {
   --my-earnings-hero-text: var(--foreground);
   --my-earnings-hero-muted: color-mix(in srgb, var(--foreground) 65%, transparent);
   --my-earnings-card-bg: color-mix(in srgb, var(--card) 97%, transparent);
+  --my-earnings-calendar-card-bg: #0891b226;
   --my-earnings-card-shadow: 0 12px 36px rgba(37, 99, 235, 0.1), 0 4px 14px rgba(15, 23, 42, 0.06);
   --my-earnings-pill-bg: color-mix(in srgb, var(--primary) 9%, transparent);
   --my-earnings-selected-shadow: 0 4px 16px color-mix(in srgb, var(--primary) 28%, transparent);
@@ -2225,7 +2227,7 @@ html::-webkit-scrollbar-thumb:active,
 }
 
 .my-earnings-calendar-card {
-  background: var(--my-earnings-card-bg);
+  background: var(--my-earnings-calendar-card-bg);
   border: 1px solid var(--my-earnings-card-border);
   border-radius: 28px;
   padding: 18px 14px 10px;
@@ -2247,7 +2249,7 @@ html::-webkit-scrollbar-thumb:active,
 .my-earnings-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px 2px;
+  gap: 6px;
 }
 
 .my-earnings-cell {

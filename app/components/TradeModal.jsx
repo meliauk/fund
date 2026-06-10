@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import PendingTradesModal from './PendingTradesModal';
 import { Spinner } from '@/components/ui/spinner';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { formatMoney } from '@/lib/utils';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -271,7 +272,7 @@ export default function TradeModal({ type, fund, holding, onClose, onConfirm, pe
                 </div>
                 <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
                   <span className="muted">买入金额</span>
-                  <span>{Number(amount).toFixed(2)}</span>
+                  <span>{formatMoney(amount)}</span>
                 </div>
                 <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
                   <span className="muted">买入费率</span>
@@ -327,10 +328,10 @@ export default function TradeModal({ type, fund, holding, onClose, onConfirm, pe
                           持有市值 (估)
                         </div>
                         <div style={{ fontSize: '12px' }}>
-                          <span style={{ opacity: 0.7 }}>{(holding.share * Number(price)).toFixed(2)}</span>
+                          <span style={{ opacity: 0.7 }}>{formatMoney(holding.share * Number(price))}</span>
                           <span style={{ margin: '0 4px' }}>→</span>
                           <span style={{ fontWeight: 600 }}>
-                            {((holding.share + Number(calcShare)) * Number(price)).toFixed(2)}
+                            {formatMoney((holding.share + Number(calcShare)) * Number(price))}
                           </span>
                         </div>
                       </div>
@@ -380,7 +381,7 @@ export default function TradeModal({ type, fund, holding, onClose, onConfirm, pe
                 </div>
                 <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
                   <span className="muted">预估手续费</span>
-                  <span>{price ? `${sellFee.toFixed(2)}` : '待计算'}</span>
+                  <span>{price ? `${formatMoney(sellFee)}` : '待计算'}</span>
                 </div>
                 <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
                   <span className="muted">卖出日期</span>
@@ -392,7 +393,7 @@ export default function TradeModal({ type, fund, holding, onClose, onConfirm, pe
                 >
                   <span className="muted">预计回款</span>
                   <span style={{ color: 'var(--danger)', fontWeight: 700 }}>
-                    {loadingPrice ? '计算中...' : price ? `${estimatedReturn.toFixed(2)}` : '待计算'}
+                    {loadingPrice ? '计算中...' : price ? `${formatMoney(estimatedReturn)}` : '待计算'}
                   </span>
                 </div>
                 <div className="muted" style={{ fontSize: '12px', textAlign: 'right', marginTop: 4 }}>
@@ -424,10 +425,10 @@ export default function TradeModal({ type, fund, holding, onClose, onConfirm, pe
                           持有市值 (估)
                         </div>
                         <div style={{ fontSize: '12px' }}>
-                          <span style={{ opacity: 0.7 }}>{(holding.share * sellPrice).toFixed(2)}</span>
+                          <span style={{ opacity: 0.7 }}>{formatMoney(holding.share * sellPrice)}</span>
                           <span style={{ margin: '0 4px' }}>→</span>
                           <span style={{ fontWeight: 600 }}>
-                            {((holding.share - sellShare) * sellPrice).toFixed(2)}
+                            {formatMoney((holding.share - sellShare) * sellPrice)}
                           </span>
                         </div>
                       </div>

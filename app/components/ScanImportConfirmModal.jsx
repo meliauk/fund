@@ -6,6 +6,7 @@ import { RefreshCw } from 'lucide-react';
 import { CloseIcon } from './Icons';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { formatMoney } from '@/lib/utils';
 
 export default function ScanImportConfirmModal({
   scannedFunds,
@@ -154,12 +155,7 @@ export default function ScanImportConfirmModal({
                         {holdAmounts !== null && (
                           <span className="muted" style={{ fontSize: 12 }}>
                             持有金额：
-                            <span style={{ color: 'var(--text)', fontWeight: 500 }}>
-                              {holdAmounts.toLocaleString('zh-CN', {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2
-                              })}
-                            </span>
+                            <span style={{ color: 'var(--text)', fontWeight: 500 }}>{formatMoney(holdAmounts)}</span>
                           </span>
                         )}
                         {holdGains !== null && (
@@ -169,10 +165,7 @@ export default function ScanImportConfirmModal({
                               style={{ color: holdGains >= 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 500 }}
                             >
                               {holdGains >= 0 ? '+' : '-'}
-                              {Math.abs(holdGains).toLocaleString('zh-CN', {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2
-                              })}
+                              {formatMoney(Math.abs(holdGains))}
                             </span>
                           </span>
                         )}

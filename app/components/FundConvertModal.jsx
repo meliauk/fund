@@ -6,6 +6,7 @@ import { CloseIcon } from './Icons';
 import { DatePicker, NumericInput } from './Common';
 import { fetchSmartFundNetValueBackward } from '../api/fund';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { formatMoney } from '@/lib/utils';
 
 const format2 = (v) => {
   const n = Number(v);
@@ -78,7 +79,7 @@ export default function FundConvertModal({
     if (!open) onClose?.();
   };
 
-  const hintMax = maxOut > 0 ? `最多可转出 ${format2(maxOut)}` : '暂无可转出金额';
+  const hintMax = maxOut > 0 ? `最多可转出 ${formatMoney(maxOut)}` : '暂无可转出金额';
   const refStartDate = useMemo(() => {
     const d = dayjs(confirmDate, 'YYYY-MM-DD', true);
     if (!d.isValid()) return null;

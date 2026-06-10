@@ -6,6 +6,7 @@ import { useIsMobile } from '@/app/hooks/useIsMobile';
 import { PinIcon, PinOffIcon, EyeIcon, EyeOffIcon, SwitchIcon } from './Icons';
 import FitText from './FitText';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { formatMoney } from '@/lib/utils';
 
 import { SUMMARY_TAB_ID } from '@/app/constants';
 
@@ -69,7 +70,7 @@ function CountUp({
     };
   }, [value]);
 
-  const text = `${prefix}${Math.abs(displayValue).toLocaleString('zh-CN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}${suffix}`;
+  const text = `${prefix}${formatMoney(Math.abs(displayValue), decimals)}${suffix}`;
   const styleFontSize = isNumber(style.fontSize) ? style.fontSize : parseFloat(style.fontSize);
   const resolvedMaxFontSize = maxFontSize ?? (Number.isFinite(styleFontSize) ? styleFontSize : undefined);
 

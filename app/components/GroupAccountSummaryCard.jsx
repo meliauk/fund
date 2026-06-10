@@ -2,6 +2,7 @@
 import { isArray, isFunction } from 'lodash';
 import { useIsMobile } from '@/app/hooks/useIsMobile';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { formatMoney } from '@/lib/utils';
 
 /**
  * 分组账户汇总卡片（只读展示，不包含任何持仓编辑/交易入口）
@@ -9,7 +10,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip
 function formatSignedAmount(value, decimals = 2) {
   if (value == null || !Number.isFinite(value)) return '—';
   const r = Number(value.toFixed(decimals));
-  const abs = Math.abs(r).toFixed(decimals);
+  const abs = formatMoney(Math.abs(r), decimals);
   if (r > 0) return `+${abs}`;
   if (r < 0) return `-${abs}`;
   return abs;
@@ -26,10 +27,7 @@ function formatSignedPercent(pct, decimals = 2) {
 
 function formatAmountPlain(value, decimals = 2) {
   if (value == null || !Number.isFinite(value)) return '—';
-  return Math.abs(value).toLocaleString('zh-CN', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals
-  });
+  return formatMoney(Math.abs(value), decimals);
 }
 
 /** 与 formatSignedAmount / 百分比展示相同小数位对齐，避免显示为 0.00 却仍按微正负着色 */

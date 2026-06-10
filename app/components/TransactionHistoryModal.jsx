@@ -7,6 +7,7 @@ import ConfirmModal from './ConfirmModal';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { formatMoney } from '@/lib/utils';
 
 export default function TransactionHistoryModal({
   fund,
@@ -160,9 +161,7 @@ export default function TransactionHistoryModal({
                   </div>
                   <div className="row" style={{ justifyContent: 'space-between', fontSize: '12px' }}>
                     <span className="muted">份额/金额</span>
-                    <span>
-                      {item.share ? `${Number(item.share).toFixed(2)} 份` : `${Number(item.amount).toFixed(2)}`}
-                    </span>
+                    <span>{item.share ? `${Number(item.share).toFixed(2)} 份` : `${formatMoney(item.amount)}`}</span>
                   </div>
                   <div className="row" style={{ justifyContent: 'space-between', fontSize: '12px', marginTop: 8 }}>
                     <span className="tx-history-pending-status">等待净值更新...</span>
@@ -217,7 +216,7 @@ export default function TransactionHistoryModal({
                   </div>
                   <div className="row" style={{ justifyContent: 'space-between', fontSize: '12px', marginBottom: 2 }}>
                     <span className="muted">成交金额</span>
-                    <span>{Number(item.amount).toFixed(2)}</span>
+                    <span>{formatMoney(item.amount)}</span>
                   </div>
                   {item.price && (
                     <div className="row" style={{ justifyContent: 'space-between', fontSize: '12px', marginBottom: 2 }}>

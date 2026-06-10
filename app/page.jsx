@@ -106,6 +106,7 @@ import {
 
 import { dedupeByCode, normalizeCode, cleanCodeArray } from './lib/normalize';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { formatMoney } from '@/lib/utils';
 
 export default function HomePage() {
   const {
@@ -1189,10 +1190,7 @@ export default function HomePage() {
         (currentTab === 'all' || currentTab === 'fav') && linkedHoldingsForAllFav.linked?.has?.(f.code);
       const profit = getHoldingProfitForTab(f, holding);
       const amount = profit ? profit.amount : null;
-      const holdingAmount =
-        amount == null
-          ? '未设置'
-          : `¥${Number(amount).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      const holdingAmount = amount == null ? '未设置' : `¥${formatMoney(amount)}`;
       const holdingAmountValue = amount;
       const holdingRatioValue =
         amount != null && Number.isFinite(amount) && amount > 0 && groupTotalHoldingAmount > 0
@@ -1206,17 +1204,14 @@ export default function HomePage() {
       const todayProfit =
         profitToday == null
           ? ''
-          : `${profitToday > 0 ? '+' : profitToday < 0 ? '-' : ''}${Math.abs(profitToday).toFixed(2)}`;
+          : `${profitToday > 0 ? '+' : profitToday < 0 ? '-' : ''}${formatMoney(Math.abs(profitToday))}`;
       const todayProfitValue = profitToday;
 
       const total = profit ? profit.profitTotal : null;
       const principal = holding && isNumber(holding.cost) && isNumber(holding.share) ? holding.cost * holding.share : 0;
       const holdingCostValue =
         holding && isNumber(holding.cost) && isNumber(holding.share) ? holding.cost * holding.share : null;
-      const holdingCost =
-        holdingCostValue == null
-          ? '-'
-          : Number(holdingCostValue).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const holdingCost = holdingCostValue == null ? '-' : formatMoney(holdingCostValue);
       const costNavValue = holding && isNumber(holding.cost) ? holding.cost : null;
       const costNav = costNavValue == null ? '—' : Number(costNavValue).toFixed(4);
       const todayProfitPercent =
@@ -1253,7 +1248,7 @@ export default function HomePage() {
       const yesterdayProfit =
         yesterdayProfitVal == null
           ? ''
-          : `${yesterdayProfitVal > 0 ? '+' : yesterdayProfitVal < 0 ? '-' : ''}${Math.abs(yesterdayProfitVal).toFixed(2)}`;
+          : `${yesterdayProfitVal > 0 ? '+' : yesterdayProfitVal < 0 ? '-' : ''}${formatMoney(Math.abs(yesterdayProfitVal))}`;
       const dailyBaseCostAmount =
         yesterdayMatchedDaily &&
         yesterdayMatchedDaily.baseCostAmount != null &&
@@ -1286,7 +1281,7 @@ export default function HomePage() {
             : null;
 
       const holdingProfit =
-        total == null ? '' : `${total > 0 ? '+' : total < 0 ? '-' : ''}${Math.abs(total).toFixed(2)}`;
+        total == null ? '' : `${total > 0 ? '+' : total < 0 ? '-' : ''}${formatMoney(Math.abs(total))}`;
       const holdingProfitPercent =
         total != null && principal > 0
           ? `${total > 0 ? '+' : total < 0 ? '-' : ''}${Math.abs((total / principal) * 100).toFixed(2)}%`
@@ -1309,7 +1304,7 @@ export default function HomePage() {
       const estimateProfit =
         estimateProfitValue == null
           ? ''
-          : `${estimateProfitValue > 0 ? '+' : estimateProfitValue < 0 ? '-' : ''}${Math.abs(estimateProfitValue).toFixed(2)}`;
+          : `${estimateProfitValue > 0 ? '+' : estimateProfitValue < 0 ? '-' : ''}${formatMoney(Math.abs(estimateProfitValue))}`;
       const estimateProfitPercent =
         estimateProfitPercentValue == null
           ? ''

@@ -13,7 +13,7 @@ import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from '@
 import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { CloseIcon } from './Icons';
 import FitText from './FitText';
-import { cn } from '@/lib/utils';
+import { cn, formatMoney } from '@/lib/utils';
 
 dayjs.locale('zh-cn');
 
@@ -23,7 +23,7 @@ function formatEarnings(v, masked, isRate = false) {
   if (masked) return '***';
   if (!isNumber(v) || !Number.isFinite(v)) return '—';
   const sign = v > 0 ? '+' : v < 0 ? '-' : '';
-  const formatted = Math.abs(v).toFixed(2);
+  const formatted = formatMoney(Math.abs(v));
   return isRate ? `${sign}${formatted}%` : `${sign}${formatted}`;
 }
 
@@ -357,9 +357,9 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
                         nav: 'hidden',
                         table: 'w-full border-collapse table-fixed',
                         tbody: 'w-full',
-                        weekdays: 'flex',
+                        weekdays: 'flex gap-[4px]',
                         weekday: 'flex-1 rounded-md text-[0.8rem] font-normal text-muted-foreground select-none',
-                        week: 'mt-2 flex w-full',
+                        week: 'mt-[4px] flex w-full gap-[4px]',
                         day: cn(
                           'group/day relative aspect-square w-full overflow-hidden p-0 align-top text-center select-none',
                           '[&:last-child[data-selected=true]_button]:rounded-r-md'
@@ -413,7 +413,8 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
                                 isOutside && 'my-earnings-cell-outside',
                                 '!absolute !inset-0 !flex !h-full !w-full !max-h-full !max-w-full !min-h-0 !min-w-0 !box-border',
                                 'overflow-hidden !p-0 !gap-1 !leading-none',
-                                bgToneClass
+                                bgToneClass,
+                                isToday && '!ring-1 !ring-primary !ring-inset'
                               )}
                             >
                               <span className="my-earnings-cell-num" style={{ fontSize: pcCellDayFontSize }}>
