@@ -6,7 +6,7 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
-import { ChevronLeft, ChevronRight, Info, Medal } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { Calendar, CalendarDayButton } from '@/components/ui/calendar';
 import { zhCN } from 'date-fns/locale/zh-CN';
 import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -685,7 +685,57 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
               <div className="my-earnings-calendar-card my-earnings-rank-card relative overflow-hidden p-5 flex flex-col">
                 <div className="my-earnings-rank-heading flex items-center gap-3.5 z-10">
                   <div className="w-11 h-11 rounded-full bg-[color-mix(in_srgb,var(--primary)_15%,transparent)] flex items-center justify-center shrink-0">
-                    <Medal size={22} className="text-[var(--primary)]" />
+                    <svg
+                      width="26"
+                      height="26"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="text-[var(--primary)]"
+                    >
+                      {/* Trophy cup body */}
+                      <path
+                        d="M8 4h8v6a4 4 0 0 1-8 0V4Z"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        fill="none"
+                      />
+                      {/* Left handle */}
+                      <path
+                        d="M8 6H6a2 2 0 0 0 0 4h2"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      {/* Right handle */}
+                      <path
+                        d="M16 6h2a2 2 0 0 1 0 4h-2"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      {/* Stem */}
+                      <path d="M12 14v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                      {/* Base */}
+                      <path d="M9 20h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                      <path
+                        d="M12 17l-3 3h6l-3-3Z"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinejoin="round"
+                        fill="none"
+                      />
+                      {/* Star on cup */}
+                      <path
+                        d="M12 6.5l.7 1.4 1.5.2-1.1 1.1.3 1.5L12 9.9l-1.4.8.3-1.5-1.1-1.1 1.5-.2L12 6.5Z"
+                        fill="currentColor"
+                        stroke="none"
+                      />
+                    </svg>
                   </div>
                   <div className="flex min-w-0 flex-col">
                     <div className="text-[13px] text-muted-foreground mb-0.5">
