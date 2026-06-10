@@ -729,7 +729,7 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
                   <div className="flex items-center justify-between mt-3 text-[13px]">
                     <span className="text-[var(--primary)] font-medium">低于你 {percentile}%</span>
                     <span className="text-muted-foreground font-medium">
-                      高于或等于你 {Number((100 - percentile).toFixed(2))}%
+                      高于你 {Number((100 - percentile).toFixed(2))}%
                     </span>
                   </div>
                 </div>
