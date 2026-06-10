@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { storageStore } from '../stores';
 
-const ANNOUNCEMENT_KEY = 'hasClosedAnnouncement_v2.1.1';
+const ANNOUNCEMENT_KEY = 'hasClosedAnnouncement_v2.2.0';
 
 export default function Announcement() {
   const [isVisible, setIsVisible] = useState(false);
@@ -109,13 +109,10 @@ export default function Announcement() {
                 paddingRight: '4px'
               }}
             >
-              <p>v2.1.1 版本更新内容：</p>
-              <p>1. 基金标签支持二次编辑。</p>
-              <p>2. 修复 qdii 收益计算偏差问题。</p>
-              <p>3. 前10重仓股票新增股票占比。</p>
-              <p>4. 优化实时估值分时图 y 轴坐标颜色。</p>
-              <p>5. 筛选基金支持按标签。</p>
-              <p>6. 调整添加分组按钮至最后一个分组右侧。</p>
+              <p>v2.2.0 版本更新内容：</p>
+              <p>1. 优化我的收益统计显示效果。</p>
+              <p>2. 我的收益展示年度收益率排名。</p>
+              <p>3. 修复 PC 端虚拟滚动引起的排序失效问题。</p>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
               <button
