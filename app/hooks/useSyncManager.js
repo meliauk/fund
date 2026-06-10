@@ -26,6 +26,7 @@ import {
   nowInTz,
   toTz
 } from '../lib/fundHelpers';
+import { calculateYtdReturnRate } from '../lib/dailyEarnings';
 
 export const normalizeFundDailyEarningsScoped = (source) => {
   if (!isPlainObject(source)) return {};
@@ -577,6 +578,11 @@ export function useSyncManager({ showToast, refreshAllRef, setTempSeconds, setFu
               .filter(Boolean)
           : [];
 
+        const ytdReturnRate = calculateYtdReturnRate(
+          cleanedFundDailyEarnings[DAILY_EARNINGS_SCOPE_ALL] || {},
+          cleanedHoldings
+        );
+
         return {
           funds: all.funds,
           tags: cleanedTags,
@@ -593,7 +599,8 @@ export function useSyncManager({ showToast, refreshAllRef, setTempSeconds, setFu
           dcaPlans: cleanedDcaPlans,
           customSettings: isPlainObject(all.customSettings) ? all.customSettings : {},
           fundDailyEarnings: cleanedFundDailyEarnings,
-          fundValuationTimeseries: isPlainObject(all.fundValuationTimeseries) ? all.fundValuationTimeseries : {}
+          fundValuationTimeseries: isPlainObject(all.fundValuationTimeseries) ? all.fundValuationTimeseries : {},
+          ytdReturnRate
         };
       }
 

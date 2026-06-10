@@ -90,6 +90,24 @@ html {
   --my-earnings-cta-bg: var(--card);
   --my-earnings-cta-text: var(--primary);
   --my-earnings-cta-shadow: 0 4px 22px rgba(0, 0, 0, 0.22);
+  --my-earnings-illu-opacity: 0.9;
+  --my-earnings-illu-bar-front-start: #2e98d3;
+  --my-earnings-illu-bar-front-end: #0d4168;
+  --my-earnings-illu-bar-side-start: #2a85bd;
+  --my-earnings-illu-bar-side-end: #0b3555;
+  --my-earnings-illu-arrow-start: #1b7bb8;
+  --my-earnings-illu-arrow-mid: #38a8e5;
+  --my-earnings-illu-arrow-end: #59c8ff;
+  --my-earnings-illu-glow-start: #36b7ff;
+  --my-earnings-illu-glow-end: #0a2b46;
+  --my-earnings-illu-particle: #57caff;
+  --my-earnings-illu-small-top: #2b89bf;
+  --my-earnings-illu-mid-top: #2d92ca;
+  --my-earnings-illu-large-top: #38a4d8;
+  --my-earnings-illu-stroke-soft: #55c5ff;
+  --my-earnings-illu-stroke-strong: #77d8ff;
+  --my-earnings-illu-highlight: #8be0ff;
+  --my-earnings-illu-baseline: #4bc1ff;
 }
 
 /* 亮色主题：ui-ux-pro-max 规范 - 正文 #0F172A、弱化 #475569、玻璃 bg-white/80+、边框可见 */
@@ -147,6 +165,24 @@ html {
   --my-earnings-pill-bg: color-mix(in srgb, var(--primary) 9%, transparent);
   --my-earnings-selected-shadow: 0 4px 16px color-mix(in srgb, var(--primary) 28%, transparent);
   --my-earnings-cta-shadow: 0 4px 16px rgba(8, 145, 178, 0.12);
+  --my-earnings-illu-opacity: 0.78;
+  --my-earnings-illu-bar-front-start: #0891b2;
+  --my-earnings-illu-bar-front-end: #67e8f9;
+  --my-earnings-illu-bar-side-start: #0284c7;
+  --my-earnings-illu-bar-side-end: #bae6fd;
+  --my-earnings-illu-arrow-start: #0e7490;
+  --my-earnings-illu-arrow-mid: #0284c7;
+  --my-earnings-illu-arrow-end: #0891b2;
+  --my-earnings-illu-glow-start: #06b6d4;
+  --my-earnings-illu-glow-end: #e0f2fe;
+  --my-earnings-illu-particle: #0891b2;
+  --my-earnings-illu-small-top: #0e7490;
+  --my-earnings-illu-mid-top: #0284c7;
+  --my-earnings-illu-large-top: #0891b2;
+  --my-earnings-illu-stroke-soft: #0284c7;
+  --my-earnings-illu-stroke-strong: #0891b2;
+  --my-earnings-illu-highlight: #0e7490;
+  --my-earnings-illu-baseline: #0891b2;
 }
 
 * {
@@ -2145,6 +2181,12 @@ html::-webkit-scrollbar-thumb:active,
 .my-earnings-drawer-scroll {
   padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.my-earnings-drawer-scroll::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
 }
 
 .my-earnings-drawer-scroll .my-earnings-year-list {
@@ -2231,9 +2273,41 @@ html::-webkit-scrollbar-thumb:active,
   border: 1px solid var(--my-earnings-card-border);
   border-radius: 28px;
   padding: 18px 14px 10px;
-  box-shadow: var(--my-earnings-card-shadow);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
+}
+
+.my-earnings-rank-card {
+  min-height: 198px;
+}
+
+.my-earnings-rank-heading {
+  min-width: 0;
+}
+
+.my-earnings-rank-illustration {
+  flex: 0 0 118px;
+  width: 118px;
+  height: 80px;
+  margin-left: auto;
+  pointer-events: none;
+  opacity: var(--my-earnings-illu-opacity);
+}
+
+@media (max-width: 640px) {
+  .my-earnings-rank-card {
+    min-height: 190px;
+  }
+
+  .my-earnings-rank-heading {
+    gap: 10px;
+  }
+
+  .my-earnings-rank-illustration {
+    flex-basis: 92px;
+    width: 92px;
+    height: 62px;
+  }
 }
 
 .my-earnings-weekdays {
