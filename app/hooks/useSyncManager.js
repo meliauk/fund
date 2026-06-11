@@ -602,6 +602,17 @@ export function useSyncManager({ showToast, refreshAllRef, setTempSeconds, setFu
           fundValuationTimeseries: isPlainObject(all.fundValuationTimeseries) ? all.fundValuationTimeseries : {},
           ytdReturnRate
         };
+      } else {
+        // 增量同步时，也一并计算并上报 ytdReturnRate，以免云端 ytd_return_rate 长期为空
+        try {
+          const rawHoldings = storageStore.getItem('holdings', {});
+          const rawEarnings = storageStore.getItem('fundDailyEarnings', {});
+          const scopedDaily = normalizeFundDailyEarningsScoped(rawEarnings);
+          const ytdReturnRate = calculateYtdReturnRate(scopedDaily[DAILY_EARNINGS_SCOPE_ALL] || {}, rawHoldings);
+          all.ytdReturnRate = ytdReturnRate;
+        } catch (e) {
+          console.warn('Failed to calculate ytdReturnRate for partial sync', e);
+        }
       }
 
       return all;
