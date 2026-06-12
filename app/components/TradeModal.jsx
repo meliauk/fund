@@ -10,6 +10,8 @@ import { fetchFundPingzhongdata, fetchSmartFundNetValue } from '../api/fund';
 import { DatePicker, NumericInput } from './Common';
 import ConfirmModal from './ConfirmModal';
 import { CloseIcon } from './Icons';
+import { AlertTriangle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import PendingTradesModal from './PendingTradesModal';
 import { Spinner } from '@/components/ui/spinner';
@@ -245,10 +247,20 @@ export default function TradeModal({ type, fund, holding, onClose, onConfirm, pe
         </div>
 
         {!showConfirm && currentPendingTrades.length > 0 && (
-          <div className="trade-pending-alert" onClick={() => setShowPendingList(true)}>
-            <span>⚠️ 当前有 {currentPendingTrades.length} 笔待处理交易</span>
-            <span style={{ textDecoration: 'underline' }}>查看详情 &gt;</span>
-          </div>
+          <Alert
+            variant="warning"
+            className="cursor-pointer"
+            style={{ marginBottom: 16 }}
+            onClick={() => setShowPendingList(true)}
+          >
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}
+            >
+              <span>当前有 {currentPendingTrades.length} 笔待处理交易</span>
+              <span style={{ textDecoration: 'underline' }}>查看详情 &gt;</span>
+            </AlertDescription>
+          </Alert>
         )}
 
         {!showConfirm && (

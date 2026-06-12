@@ -2,7 +2,9 @@
 
 import { motion } from 'framer-motion';
 import Image from 'next/image';
+import { AlertTriangle } from 'lucide-react';
 import { CloseIcon } from './Icons';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import weChatGroupImg from '../assets/weChatGroup.jpg';
 
 export default function WeChatModal({ onClose }) {
@@ -34,9 +36,10 @@ export default function WeChatModal({ onClose }) {
             <CloseIcon width="20" height="20" />
           </button>
         </div>
-        <div className="trade-pending-alert">
-          <span>⚠️ 入群须知：禁止讨论和基金买卖以及投资的有关内容，可反馈软件相关需求和问题。</span>
-        </div>
+        <Alert style={{ marginBottom: 16 }} variant="warning">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>入群须知：禁止讨论和基金买卖以及投资的有关内容，可反馈软件相关需求。</AlertDescription>
+        </Alert>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <Image
             src={weChatGroupImg}

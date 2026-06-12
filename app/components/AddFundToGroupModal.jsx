@@ -98,7 +98,7 @@ export default function AddFundToGroupModal({
           </button>
         </div>
 
-        <Alert style={{ marginBottom: 16 }}>
+        <Alert style={{ marginBottom: 16 }} variant="info">
           <Info className="h-4 w-4" />
           <AlertDescription>
             在此添加的基金不会代入原有持仓金额。如需带金额迁移，请使用「分组迁移」功能。
