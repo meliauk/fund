@@ -3,9 +3,9 @@
 import { useMemo, useEffect, useState } from 'react';
 import { isArray, isNumber, isPlainObject, isString } from 'lodash';
 import { useStorageStore } from '../stores';
-import { SUMMARY_TAB_ID, SUMMARY_SOURCE_GLOBAL, DAILY_EARNINGS_SCOPE_ALL } from '@/app/constants';
-import { aggregatePortfolioDailyEarnings } from '../lib/dailyEarnings';
 import { fetchRelatedSectorsBatch } from '@/app/api/fund';
+import { SUMMARY_TAB_ID, SUMMARY_SOURCE_GLOBAL } from '@/app/constants';
+import { aggregatePortfolioDailyEarnings, mergeAllScopedDailyEarnings } from '../lib/dailyEarnings';
 
 /**
  * 虚拟 Summary Tab 收益/汇总资产计算 Hook
@@ -229,9 +229,7 @@ export function useSummaryCalculations({ currentTab, setCurrentTab, getHoldingPr
       const roundedToday = Math.round(totalProfitToday * 100) / 100;
       const returnRate = totalCost > 0 ? (totalHoldingReturn / totalCost) * 100 : 0;
       const todayReturnRate = totalPrincipalToday > 0 ? (roundedToday / totalPrincipalToday) * 100 : 0;
-      const scopeDaily = isPlainObject(fundDailyEarnings?.[DAILY_EARNINGS_SCOPE_ALL])
-        ? fundDailyEarnings[DAILY_EARNINGS_SCOPE_ALL]
-        : {};
+      const scopeDaily = mergeAllScopedDailyEarnings(fundDailyEarnings);
       const dailySeries = aggregatePortfolioDailyEarnings(scopeDaily);
       let cum = 0;
       const sparkSeries = dailySeries.map((pt) => {

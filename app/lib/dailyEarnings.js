@@ -137,6 +137,87 @@ export function setAllDailyEarningsScoped(scopedMap) {
 }
 
 /**
+ * 合并所有 scope 的收益数据（累加同日收益，同一基金在不同 scope 独立持有）
+ * @param {Object} scopedDaily - { [scope]: { [code]: Array<{date, earnings, ...}> } }
+ * @returns {Object} - { [code]: Array<{date, earnings, ...}> }
+ */
+export function mergeAllScopedDailyEarnings(scopedDaily) {
+  const merged = {};
+  if (!isPlainObject(scopedDaily)) return merged;
+  Object.values(scopedDaily).forEach((bucket) => {
+    if (!isPlainObject(bucket)) return;
+    Object.entries(bucket).forEach(([code, list]) => {
+      if (!isArray(list)) return;
+      if (!merged[code]) {
+        merged[code] = new Map();
+      }
+      const dateMap = merged[code];
+      list.forEach((item) => {
+        if (!item?.date) return;
+        const existing = dateMap.get(item.date);
+        if (existing) {
+          // 累加 earnings 和 baseCostAmount
+          dateMap.set(item.date, {
+            ...existing,
+            earnings: (existing.earnings || 0) + (item.earnings || 0),
+            baseCostAmount: (existing.baseCostAmount || 0) + (item.baseCostAmount || 0)
+          });
+        } else {
+          dateMap.set(item.date, { ...item });
+        }
+      });
+    });
+  });
+  // 将 Map 转换回数组
+  const result = {};
+  Object.entries(merged).forEach(([code, dateMap]) => {
+    result[code] = Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+  });
+  return result;
+}
+
+/**
+ * 合并全局 holdings 和分组 holdings（累加持仓，计算加权平均成本）
+ * @param {Object} globalHoldings - 全局 holdings
+ * @param {Object} groupHoldings - 分组 holdings
+ * @returns {Object} - 合并后的 holdings
+ */
+export function mergeAllHoldings(globalHoldings, groupHoldings) {
+  const merged = {};
+  // 合并全局 holdings
+  if (isPlainObject(globalHoldings)) {
+    Object.entries(globalHoldings).forEach(([code, holding]) => {
+      if (isPlainObject(holding) && isNumber(holding.share) && holding.share > 0) {
+        merged[code] = { ...holding };
+      }
+    });
+  }
+  // 累加分组 holdings
+  if (isPlainObject(groupHoldings)) {
+    Object.values(groupHoldings).forEach((group) => {
+      if (!isPlainObject(group)) return;
+      Object.entries(group).forEach(([code, holding]) => {
+        if (!isPlainObject(holding) || !isNumber(holding.share) || holding.share <= 0) return;
+        if (merged[code]) {
+          // 计算加权平均成本
+          const existingTotalCost = (merged[code].share || 0) * (merged[code].cost || 0);
+          const newTotalCost = holding.share * (holding.cost || 0);
+          const totalShare = (merged[code].share || 0) + holding.share;
+          merged[code] = {
+            ...merged[code],
+            share: totalShare,
+            cost: totalShare > 0 ? (existingTotalCost + newTotalCost) / totalShare : 0
+          };
+        } else {
+          merged[code] = { ...holding };
+        }
+      });
+    });
+  }
+  return merged;
+}
+
+/**
  * 将多基金的每日收益按日期合并为组合序列（同日 earnings 求和；组合层面 rate 无统一定义，置为 null）。
  * @param {Record<string, unknown>} fundDailyEarningsMap - 与 localStorage 结构一致：{ [code]: Array<{date, earnings, rate?}> }
  * @returns {Array<{ date: string, earnings: number, rate: null }>}
@@ -205,8 +286,9 @@ export function calculateYtdReturnRate(fundDailyEarningsMap, holdings) {
   let currentTotalCost = 0;
   if (isPlainObject(holdings)) {
     for (const code of Object.keys(holdings)) {
-      if (isObject(holdings[code]) && isNumber(holdings[code].cost)) {
-        currentTotalCost += holdings[code].cost;
+      const holding = holdings[code];
+      if (isObject(holding) && isNumber(holding.share) && isNumber(holding.cost)) {
+        currentTotalCost += holding.share * holding.cost; // 份额 × 单位成本 = 总成本
       }
     }
   }

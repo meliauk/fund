@@ -15,8 +15,8 @@ import { CloseIcon } from './Icons';
 import FitText from './FitText';
 import { cn, formatMoney } from '@/lib/utils';
 import { supabase, isSupabaseConfigured } from '@/app/lib/supabase';
-import { calculateYtdReturnRate, getAllDailyEarnings } from '@/app/lib/dailyEarnings';
-import { storageStore } from '@/app/stores';
+import { calculateYtdReturnRate, mergeAllScopedDailyEarnings, mergeAllHoldings } from '@/app/lib/dailyEarnings';
+import { storageStore, useUserStore, useStorageStore } from '@/app/stores';
 
 dayjs.locale('zh-cn');
 
@@ -176,6 +176,8 @@ function EarningsRankIllustration() {
 export default function MyEarningsCalendarPage({ open, onOpenChange, series = [], masked, onGoHome }) {
   const isMobile = useIsMobile();
   const reduceMotion = useReducedMotion();
+  const user = useUserStore((state) => state.user);
+  const fundDailyEarnings = useStorageStore((state) => state.fundDailyEarnings);
 
   const hasData = isArray(series) && series.length > 0;
 
@@ -198,9 +200,12 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
     let cancelled = false;
     const computeAndFetchPercentile = async () => {
       try {
-        const earningsMap = getAllDailyEarnings('all');
-        const holdings = storageStore.getItem('holdings', {});
-        const rate = calculateYtdReturnRate(earningsMap, holdings);
+        const mergedEarningsMap = mergeAllScopedDailyEarnings(fundDailyEarnings);
+        const globalHoldings = storageStore.getItem('holdings', {});
+        const groupHoldings = storageStore.getItem('groupHoldings', {});
+        const mergedHoldings = mergeAllHoldings(globalHoldings, groupHoldings);
+
+        const rate = calculateYtdReturnRate(mergedEarningsMap, mergedHoldings);
 
         if (!isNumber(rate) || !Number.isFinite(rate)) {
           if (!cancelled) {
@@ -214,7 +219,7 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
         setYtdRate(rate);
         setPercentile(null);
 
-        if (!isSupabaseConfigured) return;
+        if (!isSupabaseConfigured || !user) return;
 
         const { data, error } = await supabase.rpc('get_ytd_percentile', { p_ytd_rate: rate });
         const nextPercentile = Number(data);
@@ -230,7 +235,7 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, user]);
 
   const earningsByDate = useMemo(() => {
     const map = new Map();
@@ -680,7 +685,7 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
         )}
 
         {isNumber(ytdRate) && (
-          <div className="shrink-0 pt-4 pb-6">
+          <div className="shrink-0 pt-2 pb-6">
             {isNumber(percentile) && percentile >= 0 ? (
               <div className="my-earnings-calendar-card my-earnings-rank-card relative overflow-hidden p-5 flex flex-col">
                 <div className="my-earnings-rank-heading flex items-center gap-3.5 z-10">
