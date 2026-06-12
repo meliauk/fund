@@ -70,22 +70,20 @@ function DialogOverlay({ className, ...props }) {
   }, [open]);
 
   return (
-    <DialogPrimitive.Close asChild>
-      <div
-        ref={overlayRef}
-        data-slot="dialog-overlay"
-        data-state={open ? 'open' : 'closed'}
-        role="button"
-        tabIndex={-1}
-        aria-label="关闭"
-        className={cn(
-          'fixed inset-0 z-50 cursor-default bg-[var(--dialog-overlay)] backdrop-blur-[4px] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0',
-          className
-        )}
-        style={{ touchAction: 'none' }}
-        {...props}
-      />
-    </DialogPrimitive.Close>
+    <div
+      ref={overlayRef}
+      data-slot="dialog-overlay"
+      data-state={open ? 'open' : 'closed'}
+      role="button"
+      tabIndex={-1}
+      aria-label="关闭"
+      className={cn(
+        'fixed inset-0 z-50 cursor-default bg-[var(--dialog-overlay)] backdrop-blur-[4px] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0',
+        className
+      )}
+      style={{ touchAction: 'none' }}
+      {...props}
+    />
   );
 }
 
@@ -97,8 +95,6 @@ function DialogContent({ className, children, showCloseButton = true, overlayCla
         data-slot="dialog-content"
         onOpenAutoFocus={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => e.preventDefault()}
-        onInteractOutside={(e) => e.preventDefault()}
-        onPointerDownOutside={(e) => e.preventDefault()}
         className={cn(
           'fixed top-[50%] left-[50%] z-50 w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-[16px] border border-[var(--border)] text-[var(--foreground)] p-6 dialog-content-shadow outline-none duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg',
           'mobile-dialog-glass',

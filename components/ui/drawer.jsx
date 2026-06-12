@@ -72,24 +72,22 @@ function DrawerOverlay({ className, ...props }) {
 
   // modal={false} 时 vaul 不渲染/隐藏 Overlay，用自定义遮罩 div 保证始终有遮罩；点击遮罩关闭
   return (
-    <DrawerPrimitive.Close asChild>
-      <div
-        ref={overlayRef}
-        data-slot="drawer-overlay"
-        data-state={open ? 'open' : 'closed'}
-        role="button"
-        tabIndex={-1}
-        aria-label="关闭"
-        className={cn(
-          'fixed inset-0 z-50 cursor-default bg-[var(--drawer-overlay,rgba(0,0,0,0.45))] backdrop-blur-[6px]',
-          'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0',
-          className
-        )}
-        style={{ touchAction: 'none' }}
-        {...scrollLockProps}
-        {...props}
-      />
-    </DrawerPrimitive.Close>
+    <div
+      ref={overlayRef}
+      data-slot="drawer-overlay"
+      data-state={open ? 'open' : 'closed'}
+      role="button"
+      tabIndex={-1}
+      aria-label="关闭"
+      className={cn(
+        'fixed inset-0 z-50 cursor-default bg-[var(--drawer-overlay,rgba(0,0,0,0.45))] backdrop-blur-[6px]',
+        'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0',
+        className
+      )}
+      style={{ touchAction: 'none' }}
+      {...scrollLockProps}
+      {...props}
+    />
   );
 }
 
@@ -173,8 +171,6 @@ function DrawerContent({
       <DrawerOverlay />
       <DrawerPrimitive.Content
         data-slot="drawer-content"
-        onInteractOutside={(e) => e.preventDefault()}
-        onPointerDownOutside={(e) => e.preventDefault()}
         style={contentStyle}
         className={cn(
           'group/drawer-content fixed z-50 flex h-auto flex-col bg-[var(--card)] text-[var(--text)] border-[var(--border)]',
