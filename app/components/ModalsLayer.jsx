@@ -704,6 +704,8 @@ export default function ModalsLayer({ callbacksRef }) {
             fundCode={fundTagsEdit.code ?? undefined}
             fundName={fundTagsEdit.name}
             tags={fundTagsEdit.tags}
+            allFunds={cb.current.funds}
+            fundTagListsByCode={cb.current.fundTagListsByCode}
             onSave={cb.current.handleSaveFundTags}
             recommendedTagItems={(cb.current.fundTagRecords || [])
               .map((r) => ({
