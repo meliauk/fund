@@ -13,7 +13,7 @@ The `FundCard` component (`app/components/FundCard/index.jsx`) is the core UI el
   - `FundIntradayChart` for intraday valuation curves.
   - `FundTrendChart` for historical net value trends and transaction markers.
   - `FundDailyEarnings` for personal daily profit/loss history.
-- **Holdings Information**: Fetches and renders the top 10 stock holdings (前10重仓股票) periodically.
+- **Holdings Information**: Fetches and renders the top 10 stock holdings (前10重仓) periodically.
 - **Layout Adaptability**: Supports `card` mode (default inline rendering) and `drawer` mode (uses `Tabs` for grouping sections, usually for mobile).
 
 ## STATE & DATA MANAGEMENT

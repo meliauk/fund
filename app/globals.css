@@ -585,7 +585,7 @@ body::before {
   border: 1px solid var(--border);
 }
 
-/* 亮色主题：前10重仓股票展开展示 */
+/* 亮色主题：前10重仓展开展示 */
 [data-theme='light'] .list .item {
   background: #fff;
   border-color: var(--border);
