@@ -339,6 +339,7 @@ export default function ModalsLayer({ callbacksRef }) {
             fund={actionModal.fund}
             onClose={() => setActionModal({ open: false, fund: null })}
             onAction={(type) => cb.current.handleAction(type, actionModal.fund, actionModal.groupId)}
+            nestedModalOpen={historyModal.open || addHistoryModal.open}
             groupName={
               actionModal.groupId ? (cb.current.groups || []).find((g) => g.id === actionModal.groupId)?.name : ''
             }
@@ -615,6 +616,7 @@ export default function ModalsLayer({ callbacksRef }) {
         {historyModal.open && (
           <TransactionHistoryModal
             fund={historyModal.fund}
+            nestedModalOpen={addHistoryModal.open}
             transactions={(cb.current.transactions?.[historyModal.fund?.code] || []).filter((t) =>
               !cb.current.getScopedGroupId?.(historyModal.groupId)
                 ? !t.groupId

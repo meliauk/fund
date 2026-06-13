@@ -1,11 +1,33 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { CloseIcon, SettingsIcon } from './Icons';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
-export default function HoldingActionModal({ fund, onClose, onAction, hasHistory, pendingCount, groupName }) {
+export default function HoldingActionModal({
+  fund,
+  onClose,
+  onAction,
+  hasHistory,
+  pendingCount,
+  groupName,
+  nestedModalOpen
+}) {
+  const ignoreDialogCloseUntilRef = useRef(0);
+  const prevNestedModalOpenRef = useRef(false);
+
+  useEffect(() => {
+    if (nestedModalOpen) {
+      ignoreDialogCloseUntilRef.current = Date.now() + 1200;
+    } else if (prevNestedModalOpenRef.current) {
+      ignoreDialogCloseUntilRef.current = Date.now() + 1200;
+    }
+    prevNestedModalOpenRef.current = nestedModalOpen;
+  }, [nestedModalOpen]);
+
   const handleOpenChange = (open) => {
+    if (!open && (nestedModalOpen || Date.now() < ignoreDialogCloseUntilRef.current)) return;
     if (!open) {
       onClose?.();
     }
@@ -17,6 +39,12 @@ export default function HoldingActionModal({ fund, onClose, onAction, hasHistory
         showCloseButton={false}
         className="glass card modal"
         overlayClassName="modal-overlay"
+        onPointerDownOutside={(event) => {
+          if (nestedModalOpen || Date.now() < ignoreDialogCloseUntilRef.current) event.preventDefault();
+        }}
+        onInteractOutside={(event) => {
+          if (nestedModalOpen || Date.now() < ignoreDialogCloseUntilRef.current) event.preventDefault();
+        }}
         style={{ maxWidth: '320px', zIndex: 99 }}
       >
         <DialogTitle className="sr-only">持仓操作</DialogTitle>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { CloseIcon } from './Icons';
 import ConfirmModal from './ConfirmModal';
@@ -13,6 +13,7 @@ export default function TransactionHistoryModal({
   fund,
   transactions = [],
   pendingTransactions = [],
+  nestedModalOpen = false,
   onClose,
   onDeleteTransaction,
   onDeletePending,
@@ -22,6 +23,19 @@ export default function TransactionHistoryModal({
 }) {
   const [deleteConfirm, setDeleteConfirm] = useState(null); // { type: 'pending' | 'history', item }
   const [mergeConfirmOpen, setMergeConfirmOpen] = useState(false);
+  const ignoreDialogCloseUntilRef = useRef(0);
+  const prevNestedModalOpenRef = useRef(false);
+
+  const effectiveNestedModalOpen = nestedModalOpen || !!deleteConfirm || mergeConfirmOpen;
+
+  useEffect(() => {
+    if (effectiveNestedModalOpen) {
+      ignoreDialogCloseUntilRef.current = Date.now() + 1200;
+    } else if (prevNestedModalOpenRef.current) {
+      ignoreDialogCloseUntilRef.current = Date.now() + 1200;
+    }
+    prevNestedModalOpenRef.current = effectiveNestedModalOpen;
+  }, [effectiveNestedModalOpen]);
 
   // Combine and sort logic if needed, but requirements say "sorted by transaction time".
   // Pending transactions are usually "future" or "processing", so they go on top.
@@ -53,6 +67,7 @@ export default function TransactionHistoryModal({
   };
 
   const handleOpenChange = (open) => {
+    if (!open && (effectiveNestedModalOpen || Date.now() < ignoreDialogCloseUntilRef.current)) return;
     if (!open) {
       onClose?.();
     }
@@ -65,6 +80,12 @@ export default function TransactionHistoryModal({
         className="glass card modal tx-history-modal"
         overlayClassName="modal-overlay"
         overlayStyle={{ zIndex: 998 }}
+        onPointerDownOutside={(event) => {
+          if (effectiveNestedModalOpen || Date.now() < ignoreDialogCloseUntilRef.current) event.preventDefault();
+        }}
+        onInteractOutside={(event) => {
+          if (effectiveNestedModalOpen || Date.now() < ignoreDialogCloseUntilRef.current) event.preventDefault();
+        }}
         style={{
           maxWidth: '480px',
           width: '90vw',
