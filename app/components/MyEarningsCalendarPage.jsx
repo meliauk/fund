@@ -1,22 +1,22 @@
 'use client';
 import { isArray, isBoolean, isNumber } from 'lodash';
 import { useIsMobile } from '@/app/hooks/useIsMobile';
-
 import { useMemo, useState, useCallback, useEffect } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
-import { ChevronLeft, ChevronRight, Info } from 'lucide-react';
-import { Calendar, CalendarDayButton } from '@/components/ui/calendar';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { zhCN } from 'date-fns/locale/zh-CN';
+import { Calendar, CalendarDayButton } from '@/components/ui/calendar';
 import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
-import { CloseIcon } from './Icons';
-import FitText from './FitText';
 import { cn, formatMoney } from '@/lib/utils';
 import { supabase, isSupabaseConfigured } from '@/app/lib/supabase';
 import { calculateYtdReturnRate, mergeAllScopedDailyEarnings, mergeAllHoldings } from '@/app/lib/dailyEarnings';
 import { storageStore, useUserStore, useStorageStore } from '@/app/stores';
+import { CloseIcon } from './Icons';
+import FitText from './FitText';
 
 dayjs.locale('zh-cn');
 
@@ -178,8 +178,45 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
   const reduceMotion = useReducedMotion();
   const user = useUserStore((state) => state.user);
   const fundDailyEarnings = useStorageStore((state) => state.fundDailyEarnings);
+  const funds = useStorageStore((state) => state.funds);
 
   const hasData = isArray(series) && series.length > 0;
+
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const mergedEarningsMapForDrawer = useMemo(() => {
+    return mergeAllScopedDailyEarnings(fundDailyEarnings);
+  }, [fundDailyEarnings]);
+
+  const selectedDateFunds = useMemo(() => {
+    if (!selectedDate) return [];
+    const list = [];
+    for (const [code, dates] of Object.entries(mergedEarningsMapForDrawer)) {
+      if (!isArray(dates)) continue;
+      const dayData = dates.find((d) => d.date === selectedDate);
+      if (dayData && isNumber(dayData.earnings) && Number.isFinite(dayData.earnings)) {
+        const fundObj = (funds || []).find((f) => f.code === code);
+        const name = fundObj?.name || code;
+        let rate = dayData.rate;
+        if (!isNumber(rate) || !Number.isFinite(rate)) {
+          const cost = Number(dayData.baseCostAmount);
+          if (Number.isFinite(cost) && cost > 0) {
+            rate = (dayData.earnings / cost) * 100;
+          } else {
+            rate = null;
+          }
+        }
+        list.push({
+          code,
+          name,
+          earnings: dayData.earnings,
+          rate
+        });
+      }
+    }
+    return list.sort((a, b) => b.earnings - a.earnings);
+  }, [selectedDate, mergedEarningsMapForDrawer, funds]);
 
   const [viewTab, setViewTab] = useState('day');
   const [displayMode, setDisplayMode] = useState('amount');
@@ -295,13 +332,19 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
 
   const dayViewMonthTotalRate = useMemo(() => {
     const prefix = cursorMonth.format('YYYY-MM');
-    let sum = 0;
-    for (const [d, obj] of earningsByDate.entries()) {
-      if (d.startsWith(prefix) && isNumber(obj.rate) && Number.isFinite(obj.rate)) {
-        sum += obj.rate;
+    let compounded = 1;
+    let hasValidData = false;
+    const sortedDates = Array.from(earningsByDate.keys())
+      .filter((d) => d.startsWith(prefix))
+      .sort();
+    for (const d of sortedDates) {
+      const obj = earningsByDate.get(d);
+      if (obj && isNumber(obj.rate) && Number.isFinite(obj.rate)) {
+        compounded *= 1 + obj.rate / 100;
+        hasValidData = true;
       }
     }
-    return sum;
+    return hasValidData ? (compounded - 1) * 100 : 0;
   }, [earningsByDate, cursorMonth]);
 
   const dayViewMonthTotal = activeDisplayMode === 'rate' ? dayViewMonthTotalRate : dayViewMonthTotalAmount;
@@ -589,12 +632,20 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
                               day={day}
                               modifiers={modifiers}
                               {...props}
+                              onClick={(e) => {
+                                if (props.onClick) props.onClick(e);
+                                if (showEarningsRow && hasVal) {
+                                  setSelectedDate(key);
+                                  setDrawerOpen(true);
+                                }
+                              }}
                               style={{
                                 ...(props.style || {}),
                                 borderRadius: 2,
                                 padding: 0,
                                 minHeight: 0,
-                                overflow: 'hidden'
+                                overflow: 'hidden',
+                                cursor: showEarningsRow && hasVal ? 'pointer' : 'default'
                               }}
                               className={cn(
                                 'my-earnings-cell',
@@ -602,7 +653,8 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
                                 '!absolute !inset-0 !flex !h-full !w-full !max-h-full !max-w-full !min-h-0 !min-w-0 !box-border',
                                 'overflow-hidden !p-0 !gap-1 !leading-none',
                                 bgToneClass,
-                                isToday && '!ring-1 !ring-primary !ring-inset'
+                                isToday && '!ring-1 !ring-primary !ring-inset',
+                                showEarningsRow && hasVal && 'hover:brightness-95 transition-all'
                               )}
                             >
                               <span className="my-earnings-cell-num" style={{ fontSize: pcCellDayFontSize }}>
@@ -810,49 +862,265 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
     </div>
   );
 
-  if (resolvedIsMobile) {
-    return (
-      <Drawer open={!!open} onOpenChange={onOpenChange}>
-        <DrawerContent
-          className={cn('my-earnings-drawer-content flex max-h-[96vh] flex-col gap-0 p-0')}
-          defaultHeight="92vh"
-          maxHeight="96vh"
-          minHeight="44vh"
+  const detailsContent = (
+    <div className="flex-1 flex flex-col min-h-0 px-5 pb-5 pt-2">
+      {selectedDateFunds.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground opacity-70">
+          暂无收益明细
+        </div>
+      ) : (
+        <div
+          className="fund-history-table-wrapper flex-1 overflow-y-auto"
+          style={{
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius)',
+            background: 'var(--card)'
+          }}
         >
-          <DrawerHeader className="flex-shrink-0 flex flex-row items-center justify-between gap-2 space-y-0 px-5 pb-3 pt-2 text-left">
-            <DrawerTitle className="text-base font-semibold text-[var(--text)]">我的收益</DrawerTitle>
-            <DrawerClose
-              className="icon-button border-none bg-transparent p-1"
-              style={{ borderColor: 'transparent', backgroundColor: 'transparent' }}
-            >
-              <CloseIcon width="20" height="20" />
-            </DrawerClose>
-          </DrawerHeader>
-          {content}
-        </DrawerContent>
-      </Drawer>
-    );
-  }
+          <table
+            className="fund-history-table"
+            style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              fontSize: '13px',
+              color: 'var(--text)'
+            }}
+          >
+            <thead>
+              <tr
+                style={{
+                  borderBottom: '1px solid var(--border)',
+                  background: 'var(--table-row-alt-bg)',
+                  boxShadow: '0 1px 0 0 var(--border)'
+                }}
+              >
+                <th
+                  style={{
+                    padding: '8px 12px',
+                    fontWeight: 600,
+                    color: 'var(--muted)',
+                    textAlign: 'left',
+                    background: 'var(--table-row-alt-bg)',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1,
+                    borderTopLeftRadius: 'var(--radius)'
+                  }}
+                >
+                  基金名称
+                </th>
+                <th
+                  style={{
+                    padding: '8px 12px',
+                    fontWeight: 600,
+                    color: 'var(--muted)',
+                    textAlign: 'right',
+                    background: 'var(--table-row-alt-bg)',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1
+                  }}
+                >
+                  收益金额
+                </th>
+                <th
+                  style={{
+                    padding: '8px 12px',
+                    fontWeight: 600,
+                    color: 'var(--muted)',
+                    textAlign: 'right',
+                    background: 'var(--table-row-alt-bg)',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1,
+                    borderTopRightRadius: 'var(--radius)'
+                  }}
+                >
+                  收益率
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {selectedDateFunds.map((item) => (
+                <tr
+                  key={item.code}
+                  style={{ borderBottom: '1px solid var(--border)' }}
+                  className="group hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                >
+                  <td style={{ padding: '8px 12px', textAlign: 'left', maxWidth: '140px' }}>
+                    <div className="flex flex-col min-w-0">
+                      <div className="text-[13px] font-medium text-[var(--text)] truncate">{item.name}</div>
+                      <div className="text-[11px] text-muted-foreground font-mono mt-0.5 opacity-70 group-hover:opacity-100 transition-opacity duration-200">
+                        {item.code}
+                      </div>
+                    </div>
+                  </td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                    <span
+                      className={cn('text-[14px] font-semibold font-mono tracking-tight', earningsClass(item.earnings))}
+                    >
+                      {formatEarnings(item.earnings, masked)}
+                    </span>
+                  </td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                    {isNumber(item.rate) ? (
+                      <span className={cn('text-[13px] font-mono font-medium', earningsClass(item.rate))}>
+                        {formatEarnings(item.rate, masked, true)}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">--</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
 
-  return (
-    <Dialog open={!!open} onOpenChange={onOpenChange}>
-      <DialogContent
-        showCloseButton={false}
-        className={cn(
-          'my-earnings-drawer-content flex max-h-[92vh] w-[min(650px,calc(100vw-24px))] flex-col gap-0 overflow-hidden p-0'
-        )}
-      >
-        <DialogHeader className="flex-shrink-0 flex flex-row items-center justify-between gap-2 space-y-0 px-5 pb-3 pt-4 text-left">
-          <DialogTitle className="text-base font-semibold text-[var(--text)]">我的收益</DialogTitle>
-          <DialogClose
+  const renderDrawerTitle = () => {
+    if (!selectedDate) return '收益明细';
+    const dateStr = dayjs(selectedDate).format('YYYY-M-D');
+    const total = earningsByDate.get(selectedDate);
+    if (!total || !isNumber(total.amount)) return `${dateStr} 收益明细`;
+
+    return (
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span>{dateStr} 收益明细</span>
+        <span className={cn('text-[14px] font-mono font-medium', earningsClass(total.amount))}>
+          {formatEarnings(total.amount, masked)}
+          {isNumber(total.rate) ? `/${formatEarnings(total.rate, masked, true)}` : ''}
+        </span>
+      </div>
+    );
+  };
+
+  const detailsDrawerMobile = (
+    <Drawer open={drawerOpen} onOpenChange={setDrawerOpen} direction="bottom">
+      <DrawerContent className="flex flex-col gap-0 p-0 bg-background/95 backdrop-blur-xl max-h-[88vh] rounded-t-[20px] pb-5">
+        <DrawerHeader className="flex-shrink-0 flex flex-row items-center justify-between gap-2 px-5 pb-3 pt-5 text-left border-b border-[var(--border)]">
+          <DrawerTitle className="text-base font-semibold text-[var(--text)] flex-1 min-w-0">
+            {renderDrawerTitle()}
+          </DrawerTitle>
+          <DrawerClose
             className="icon-button border-none bg-transparent p-1"
             style={{ borderColor: 'transparent', backgroundColor: 'transparent' }}
           >
             <CloseIcon width="20" height="20" />
-          </DialogClose>
-        </DialogHeader>
-        {content}
-      </DialogContent>
-    </Dialog>
+          </DrawerClose>
+        </DrawerHeader>
+        {detailsContent}
+      </DrawerContent>
+    </Drawer>
+  );
+
+  const detailsDrawerPc =
+    typeof document !== 'undefined'
+      ? createPortal(
+          <AnimatePresence>
+            {drawerOpen && (
+              <motion.div
+                key="my-earnings-details-drawer-overlay"
+                className="pc-table-setting-overlay"
+                role="dialog"
+                aria-modal="true"
+                aria-label="收益明细"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setDrawerOpen(false)}
+                style={{ zIndex: 10001 }}
+              >
+                <motion.aside
+                  className="pc-table-setting-drawer glass flex flex-col p-0"
+                  initial={{ x: '100%' }}
+                  animate={{ x: 0 }}
+                  exit={{ x: '100%' }}
+                  transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ width: 450, maxWidth: 'calc(100vw - 32px)' }}
+                >
+                  <div className="pc-table-setting-header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                      <span className="text-base font-semibold">{renderDrawerTitle()}</span>
+                    </div>
+                    <button
+                      className="icon-button"
+                      title="关闭"
+                      onClick={() => setDrawerOpen(false)}
+                      style={{ border: 'none', background: 'transparent' }}
+                    >
+                      <CloseIcon width="20" height="20" />
+                    </button>
+                  </div>
+                  {detailsContent}
+                </motion.aside>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )
+      : null;
+
+  const detailsDrawer = resolvedIsMobile ? detailsDrawerMobile : detailsDrawerPc;
+
+  if (resolvedIsMobile) {
+    return (
+      <>
+        <Drawer open={!!open} onOpenChange={onOpenChange}>
+          <DrawerContent
+            className={cn('my-earnings-drawer-content flex max-h-[96vh] flex-col gap-0 p-0')}
+            defaultHeight="92vh"
+            maxHeight="96vh"
+            minHeight="44vh"
+          >
+            <DrawerHeader className="flex-shrink-0 flex flex-row items-center justify-between gap-2 space-y-0 px-5 pb-3 pt-2 text-left">
+              <DrawerTitle className="text-base font-semibold text-[var(--text)]">我的收益</DrawerTitle>
+              <DrawerClose
+                className="icon-button border-none bg-transparent p-1"
+                style={{ borderColor: 'transparent', backgroundColor: 'transparent' }}
+              >
+                <CloseIcon width="20" height="20" />
+              </DrawerClose>
+            </DrawerHeader>
+            {content}
+          </DrawerContent>
+        </Drawer>
+        {detailsDrawer}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Dialog open={!!open} onOpenChange={onOpenChange}>
+        <DialogContent
+          showCloseButton={false}
+          className={cn(
+            'my-earnings-drawer-content flex max-h-[92vh] w-[min(650px,calc(100vw-24px))] flex-col gap-0 overflow-hidden p-0'
+          )}
+          onInteractOutside={(e) => {
+            if (drawerOpen) {
+              e.preventDefault();
+            }
+          }}
+        >
+          <DialogHeader className="flex-shrink-0 flex flex-row items-center justify-between gap-2 space-y-0 px-5 pb-3 pt-4 text-left">
+            <DialogTitle className="text-base font-semibold text-[var(--text)]">我的收益</DialogTitle>
+            <DialogClose
+              className="icon-button border-none bg-transparent p-1"
+              style={{ borderColor: 'transparent', backgroundColor: 'transparent' }}
+            >
+              <CloseIcon width="20" height="20" />
+            </DialogClose>
+          </DialogHeader>
+          {content}
+        </DialogContent>
+      </Dialog>
+      {detailsDrawer}
+    </>
   );
 }
