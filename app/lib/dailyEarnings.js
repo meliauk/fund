@@ -160,7 +160,8 @@ export function mergeAllScopedDailyEarnings(scopedDaily) {
           dateMap.set(item.date, {
             ...existing,
             earnings: (existing.earnings || 0) + (item.earnings || 0),
-            baseCostAmount: (existing.baseCostAmount || 0) + (item.baseCostAmount || 0)
+            baseCostAmount: (existing.baseCostAmount || 0) + (item.baseCostAmount || 0),
+            rate: null // 合并不同分组的收益后，重置 rate 为 null 促使消费端重算
           });
         } else {
           dateMap.set(item.date, { ...item });
