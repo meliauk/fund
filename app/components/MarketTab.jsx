@@ -34,14 +34,34 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink } from '@/components/ui/pagination';
 
 function FundDetailDialog({ cardDialogRow, getFundCardProps, setCardDialogRow }) {
+  const isAnySubModalOpen = useModalStore(
+    (s) =>
+      s.dataSourceModal.open ||
+      s.tradeModal.open ||
+      s.holdingModal.open ||
+      s.dcaModal.open ||
+      s.dividendMethodModal.open ||
+      s.convertModal.open ||
+      s.fundTagsEdit.open ||
+      s.historyModal.open ||
+      s.actionModal.open ||
+      s.selectHoldingGroupModal.open ||
+      s.addHistoryModal.open
+  );
+
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open) setCardDialogRow(null);
+        if (!open && !isAnySubModalOpen) setCardDialogRow(null);
       }}
     >
-      <DialogContent className="sm:max-w-2xl max-h-[88vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent
+        className="sm:max-w-2xl max-h-[88vh] flex flex-col p-0 overflow-hidden"
+        onPointerDownOutside={(e) => {
+          if (isAnySubModalOpen) e.preventDefault();
+        }}
+      >
         <DialogHeader className="flex-shrink-0 flex flex-row items-center justify-between gap-2 space-y-0 px-6 pb-4 pt-6 text-left border-b border-[var(--border)]">
           <DialogTitle className="text-base font-semibold text-[var(--text)]">基金详情</DialogTitle>
         </DialogHeader>
