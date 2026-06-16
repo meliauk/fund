@@ -1032,7 +1032,7 @@ export const fetchQdiiValuationFromSupabase = async (code) => {
  * @param {string} code - 基金代码
  * @param {string} jzrq - 最新净值日期（如 "2026-06-10"）
  * @param {number} actualZzl - 实际涨跌幅（百分比，如 1.23 表示 +1.23%）
- * @returns {Promise<{ bestSource: number|null, isYesterdayAccuracy: boolean }|null>}
+ * @returns {Promise<{ bestSource: number|null, isYesterdayAccuracy: boolean, isTodayAccuracy: boolean, diffs: Object<string,number>, diff?: number }|null>}
  */
 export async function fetchBestValuationSource(code, jzrq, actualZzl) {
   if (!isSupabaseConfigured || !supabase?.functions?.invoke) return null;

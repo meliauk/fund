@@ -2,7 +2,7 @@
 import { isNumber } from 'lodash';
 
 import { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Crown } from 'lucide-react';
 import { fetchFundValuationBySource, fetchBestValuationSource } from '@/app/api/fund';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -30,7 +30,8 @@ export default function FundDataSourceSelector({ fund, onClose, onSelect }) {
   });
   const [bestSource, setBestSource] = useState(null);
   const [isYesterdayAccuracy, setIsYesterdayAccuracy] = useState(false);
-  const [accuracyDiff, setAccuracyDiff] = useState(null);
+  const [isTodayAccuracy, setIsTodayAccuracy] = useState(false);
+  const [accuracyDiffs, setAccuracyDiffs] = useState({});
 
   useEffect(() => {
     if (fund?.dataSource) {
@@ -42,7 +43,8 @@ export default function FundDataSourceSelector({ fund, onClose, onSelect }) {
       setLoading(false);
       setBestSource(null);
       setIsYesterdayAccuracy(false);
-      setAccuracyDiff(null);
+      setIsTodayAccuracy(false);
+      setAccuracyDiffs({});
       return undefined;
     }
 
@@ -50,7 +52,8 @@ export default function FundDataSourceSelector({ fund, onClose, onSelect }) {
     setLoading(true);
     setBestSource(null);
     setIsYesterdayAccuracy(false);
-    setAccuracyDiff(null);
+    setIsTodayAccuracy(false);
+    setAccuracyDiffs({});
 
     // 只要有实际涨跌幅，就尝试进行比对
     const actualZzl = isNumber(fund.zzl) && Number.isFinite(fund.zzl) ? fund.zzl : null;
@@ -81,8 +84,53 @@ export default function FundDataSourceSelector({ fund, onClose, onSelect }) {
 
       if (bestResult) {
         setBestSource(bestResult.bestSource);
-        setIsYesterdayAccuracy(bestResult.isYesterdayAccuracy);
-        setAccuracyDiff(bestResult.diff);
+
+        // 判断今日净值是否已公布：jzrq 为今天时，用实时估值数据计算预测误差
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const isTodayNav = fund.jzrq === todayStr && actualZzl != null;
+
+        if (isTodayNav) {
+          // 今日净值已公布 —— 用实时估值计算误差，保证与用户看到的估值一致
+          const rtDiffs = {};
+          [v1, v2, v3].forEach((v, i) => {
+            if (v?.gszzl != null && Number.isFinite(Number(v.gszzl))) {
+              rtDiffs[String(i + 1)] = Math.abs(Number(v.gszzl) - actualZzl);
+            }
+          });
+          if (Object.keys(rtDiffs).length > 0) {
+            // 从实时误差中找出误差最小的数据源
+            let minDiff = Infinity;
+            let bestSrc = null;
+            for (const [src, d] of Object.entries(rtDiffs)) {
+              if (d < minDiff) {
+                minDiff = d;
+                bestSrc = Number(src);
+              }
+            }
+            setBestSource(bestSrc);
+            setIsYesterdayAccuracy(false);
+            setIsTodayAccuracy(true);
+            setAccuracyDiffs(rtDiffs);
+          } else {
+            // 实时估值不可用，回退到边缘函数结果
+            setIsYesterdayAccuracy(bestResult.isYesterdayAccuracy);
+            setIsTodayAccuracy(bestResult.isTodayAccuracy || false);
+            if (bestResult.diffs) {
+              setAccuracyDiffs(bestResult.diffs);
+            }
+          }
+        } else {
+          // 净值未更新（交易时段等），使用边缘函数的历史比对结果
+          setIsYesterdayAccuracy(bestResult.isYesterdayAccuracy);
+          setIsTodayAccuracy(bestResult.isTodayAccuracy || false);
+          if (bestResult.diffs) {
+            setAccuracyDiffs(bestResult.diffs);
+          } else if (bestResult.diff != null && bestResult.bestSource != null) {
+            // Fallback for older edge function responses
+            setAccuracyDiffs({ [bestResult.bestSource]: bestResult.diff });
+          }
+        }
       }
 
       setLoading(false);
@@ -131,78 +179,147 @@ export default function FundDataSourceSelector({ fund, onClose, onSelect }) {
             <RadioGroup
               value={sourceId}
               onValueChange={setSourceId}
-              style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
+              style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
             >
               {[
                 { id: '1', name: '数据源 1', est: estimates[1] },
                 { id: '2', name: '数据源 2', est: estimates[2] },
                 { id: '3', name: '数据源 3', est: estimates[3] }
-              ].map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => setSourceId(item.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '16px',
-                    borderRadius: '12px',
-                    background: sourceId === item.id ? 'var(--primary-light)' : 'rgba(0, 0, 0, 0.02)',
-                    cursor: 'pointer',
-                    width: '100%',
-                    transition: 'background 0.2s'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <RadioGroupItem value={item.id} id={`source-${item.id}`} />
-                    <Label htmlFor={`source-${item.id}`} style={{ fontSize: '16px', cursor: 'pointer' }}>
-                      {item.name}
-                    </Label>
-                    {valuationSources[item.id] === 'supabase_qdii' && (
-                      <Badge
-                        variant="outline"
-                        className="ml-1 text-[10px] px-1.5 py-0 h-4 min-h-0 leading-none border-orange-500 text-orange-500 bg-orange-500/10"
-                      >
-                        限免
-                      </Badge>
-                    )}
-                    {bestSource === Number(item.id) && (
-                      <Badge variant="destructive" className="ml-1 text-[10px] px-1.5 py-0 h-4 min-h-0 leading-none">
-                        {isYesterdayAccuracy ? '昨日最准' : '今日最准'}
-                        {accuracyDiff != null ? ` (误差 ${accuracyDiff.toFixed(2)}%)` : ''}
-                      </Badge>
-                    )}
-                  </div>
-                  <span
-                    className={
-                      item.est === '--'
-                        ? 'muted'
-                        : item.est.startsWith('+')
-                          ? 'up'
-                          : item.est.startsWith('-')
-                            ? 'down'
-                            : 'muted'
-                    }
+              ].map((item) => {
+                const isSelected = sourceId === item.id;
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => setSourceId(item.id)}
                     style={{
-                      fontSize: '16px',
-                      fontWeight: 500
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '16px',
+                      borderRadius: '12px',
+                      border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border)',
+                      background: isSelected
+                        ? 'color-mix(in srgb, var(--primary) 8%, var(--card))'
+                        : 'var(--secondary)',
+                      cursor: 'pointer',
+                      width: '100%',
+                      transition: 'all 0.2s ease'
                     }}
                   >
-                    {item.est}
-                  </span>
-                </div>
-              ))}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', width: '100%' }}>
+                      <RadioGroupItem value={item.id} id={`source-${item.id}`} style={{ marginTop: '4px' }} />
+                      <div
+                        style={{
+                          flex: 1,
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          width: '100%'
+                        }}
+                      >
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <Label
+                              htmlFor={`source-${item.id}`}
+                              style={{ fontSize: '15px', cursor: 'pointer', fontWeight: 500 }}
+                            >
+                              {item.name}
+                            </Label>
+                            {bestSource === Number(item.id) && (isYesterdayAccuracy || isTodayAccuracy) && (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] px-1.5 py-0 h-[18px] min-h-0 leading-none font-medium flex items-center gap-1"
+                                style={{
+                                  borderColor: 'rgba(212, 175, 55, 0.5)',
+                                  color: '#D4AF37',
+                                  background: 'rgba(212, 175, 55, 0.1)'
+                                }}
+                              >
+                                <Crown size={10} /> {isTodayAccuracy ? '今日最准' : '昨日最准'}
+                              </Badge>
+                            )}
+                            {valuationSources[item.id] === 'supabase_qdii' && (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] px-1.5 py-0 h-[18px] min-h-0 leading-none font-medium"
+                                style={{
+                                  borderColor: 'rgba(249, 115, 22, 0.5)',
+                                  color: '#f97316',
+                                  background: 'rgba(249, 115, 22, 0.1)'
+                                }}
+                              >
+                                限免
+                              </Badge>
+                            )}
+                          </div>
+                          {accuracyDiffs[item.id] != null && (
+                            <span
+                              style={{
+                                fontSize: '10px',
+                                color: 'var(--muted)',
+                                lineHeight: 1,
+                                background: 'color-mix(in srgb, var(--muted) 12%, transparent)',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                width: 'fit-content'
+                              }}
+                            >
+                              {isTodayAccuracy ? '今日预测误差' : '昨日预测误差'}: {accuracyDiffs[item.id].toFixed(2)}%
+                            </span>
+                          )}
+                        </div>
+
+                        <div
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'flex-end',
+                            gap: '6px',
+                            flexShrink: 0
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: '10px',
+                              color: 'var(--muted)',
+                              lineHeight: 1,
+                              background: 'color-mix(in srgb, var(--muted) 12%, transparent)',
+                              padding: '2px 6px',
+                              borderRadius: '4px'
+                            }}
+                          >
+                            当前预测
+                          </span>
+                          <span
+                            className={
+                              item.est === '--'
+                                ? 'muted'
+                                : item.est.startsWith('+')
+                                  ? 'up'
+                                  : item.est.startsWith('-')
+                                    ? 'down'
+                                    : 'muted'
+                            }
+                            style={{
+                              fontSize: '15px',
+                              fontWeight: 600,
+                              lineHeight: 1
+                            }}
+                          >
+                            {item.est}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </RadioGroup>
           )}
         </div>
 
         <div className="row" style={{ gap: 12 }}>
-          <button
-            type="button"
-            className="button secondary"
-            onClick={onClose}
-            style={{ flex: 1, background: 'rgba(255,255,255,0.05)', color: 'var(--text)' }}
-          >
+          <button type="button" className="button secondary" onClick={onClose} style={{ flex: 1 }}>
             取消
           </button>
           <button
@@ -210,7 +327,7 @@ export default function FundDataSourceSelector({ fund, onClose, onSelect }) {
             className="button"
             onClick={handleConfirm}
             disabled={loading}
-            style={{ flex: 1, opacity: !loading ? 1 : 0.6 }}
+            style={{ flex: 1, opacity: loading ? 0.6 : 1 }}
           >
             确定
           </button>
