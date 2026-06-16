@@ -45,10 +45,10 @@ export function useSummaryCalculations({ currentTab, setCurrentTab, getHoldingPr
           setSectorByCode(result);
         })
         .catch(() => {
-          // silently ignore
+          // silently ignore — 保留已有数据，不清空
         });
     }
-  }, [groupsWithHoldings]);
+  }, [groupsWithHoldings, currentTab]);
 
   // 2. 计算「全部」全局 + 各自定义分组账本的累加数据
   const summaryTabPortfolioTotals = useMemo(() => {

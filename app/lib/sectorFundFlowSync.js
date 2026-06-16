@@ -14,8 +14,8 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 const DEFAULT_TZ = 'Asia/Shanghai';
-const CONCURRENCY = 5; // 并发请求数
-const DEFAULT_INTERVAL = 5 * 60 * 1000; // 5 分钟
+const CONCURRENCY = 2; // 并发请求数（东方财富 API 对部分 secid 返回 503，降低并发缓解）
+const DEFAULT_INTERVAL = 10 * 60 * 1000; // 10 分钟
 
 // ============================================================================
 // JSONP 解析
@@ -66,21 +66,32 @@ async function fetchWithTimeout(url, timeoutMs = 10000) {
 
 /**
  * 带重试的 fetch 封装
+ * 非 2xx 响应（如 503）也会触发重试
  * @param {string} url
- * @param {number} [retries=1]
- * @param {number} [timeoutMs=10000]
+ * @param {number} [retries=2]
+ * @param {number} [timeoutMs=15000]
  * @returns {Promise<Response>}
  */
-async function fetchWithRetry(url, retries = 1, timeoutMs = 10000) {
+async function fetchWithRetry(url, retries = 1, timeoutMs = 15000) {
   let lastError;
   for (let i = 0; i <= retries; i++) {
     try {
-      return await fetchWithTimeout(url, timeoutMs);
+      const res = await fetchWithTimeout(url, timeoutMs);
+      // 非 2xx 状态码（如 503 Service Unavailable）也视为错误，触发重试
+      if (!res.ok) {
+        const err = new Error(`HTTP ${res.status}: ${res.statusText || 'Service Unavailable'}`);
+        err.status = res.status;
+        throw err;
+      }
+      return res;
     } catch (e) {
       lastError = e;
       if (i < retries) {
-        // 退避 1 秒后重试
-        await new Promise((r) => setTimeout(r, 1000));
+        // 指数退避 + jitter：1s×2^i + 0~500ms 随机
+        const baseDelay = 1000 * Math.pow(2, i);
+        const jitter = Math.round(Math.random() * 500);
+        const delay = baseDelay + jitter;
+        await new Promise((r) => setTimeout(r, delay));
       }
     }
   }
@@ -95,7 +106,7 @@ async function fetchWithRetry(url, retries = 1, timeoutMs = 10000) {
 async function fetchSectorFundFlow(secid) {
   const url = `https://push2.eastmoney.com/api/qt/stock/fflow/kline/get?lmt=0&klt=1&secid=${secid}&fields1=f1,f2,f3,f7&fields2=f51,f52,f53,f54,f55,f56&ut=fa5fd1943c7b386f172d6893dbfba10b&_=${Date.now()}`;
   try {
-    const res = await fetchWithRetry(url, 1, 10000);
+    const res = await fetchWithRetry(url);
     const text = await res.text();
     const json = parseJsonp(text);
     if (!json || json.rc !== 0 || !json.data?.klines?.length) return null;
