@@ -16,13 +16,21 @@ function buildRows(history) {
   const reversed = [...history].reverse();
   return reversed.map((item, i) => {
     const prev = reversed[i + 1];
-    let dailyChange = null;
-    if (prev && Number.isFinite(item.value) && Number.isFinite(prev.value) && prev.value !== 0) {
-      dailyChange = ((item.value - prev.value) / prev.value) * 100;
+    const unitNetValue = item.unitNetValue ?? item.value;
+    let dailyChange = item.equityReturn ?? null;
+    if (
+      dailyChange == null &&
+      prev &&
+      Number.isFinite(unitNetValue) &&
+      Number.isFinite(prev.unitNetValue) &&
+      prev.unitNetValue !== 0
+    ) {
+      dailyChange = ((unitNetValue - prev.unitNetValue) / prev.unitNetValue) * 100;
     }
     return {
       date: item.date,
-      netValue: item.value,
+      unitNetValue,
+      accumulatedNetValue: item.accumulatedNetValue,
       dailyChange
     };
   });
@@ -36,8 +44,17 @@ const columns = [
     meta: { align: 'left' }
   },
   {
-    accessorKey: 'netValue',
-    header: '净值',
+    accessorKey: 'unitNetValue',
+    header: '单位净值',
+    cell: (info) => {
+      const v = info.getValue();
+      return v != null && Number.isFinite(v) ? Number(v).toFixed(4) : '—';
+    },
+    meta: { align: 'center' }
+  },
+  {
+    accessorKey: 'accumulatedNetValue',
+    header: '累计净值',
     cell: (info) => {
       const v = info.getValue();
       return v != null && Number.isFinite(v) ? Number(v).toFixed(4) : '—';
@@ -78,8 +95,8 @@ export default function FundHistoryNetValueModal({ open, onOpenChange, code, the
     isPending: loading,
     isError
   } = useQuery({
-    queryKey: qk.fundHistory(code, 'all'),
-    queryFn: () => fetchFundHistory(code, 'all'),
+    queryKey: qk.fundHistory(code, 'all', 'accumulated'),
+    queryFn: () => fetchFundHistory(code, 'all', { netValueType: 'accumulated' }),
     enabled: open && Boolean(code),
     staleTime: 10 * 60 * 1000
   });

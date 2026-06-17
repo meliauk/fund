@@ -529,7 +529,7 @@ export default function FundValuationTrendChart({
       >
         {/* Top section: Closest source label */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
-          <span style={{ color: 'var(--muted, #888)' }}>最接近数据源</span>
+          <span style={{ color: 'var(--muted, #888)' }}>最准数据源</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ width: 10, height: 2, borderRadius: 999, backgroundColor: tooltipInfo.closestColor }} />
             <span className="muted" style={{ fontSize: '11px' }}>

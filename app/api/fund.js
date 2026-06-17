@@ -1159,12 +1159,12 @@ export async function fetchFundValuationBySource(code, dataSource = 1) {
     };
 
     const onTimeout = () => {
-      fundDebugLog('fetchFundValuationBySource gz timeout', { code: c, timeoutMs: 10000 });
+      fundDebugLog('fetchFundValuationBySource gz timeout', { code: c, timeoutMs: 8000 });
       cleanupScript();
       trySupabaseFallback(new Error('gz timeout'));
     };
 
-    const timer = setTimeout(onTimeout, 10000);
+    const timer = setTimeout(onTimeout, 5000);
 
     let removePending = null;
     removePending = dispatcher.add(c, {
@@ -1250,6 +1250,7 @@ export const fetchFundData = async (c, overrideDataSource) => {
 
   let dataSource = overrideDataSource || 1;
   let storedName = null;
+  let storedValuationSource = null;
   if (!overrideDataSource) {
     try {
       const arr = storageStore.getItem('funds', []);
@@ -1258,6 +1259,7 @@ export const fetchFundData = async (c, overrideDataSource) => {
         if (f) {
           if (f.dataSource) dataSource = f.dataSource;
           if (f.name) storedName = f.name;
+          if (f.valuationSource) storedValuationSource = f.valuationSource;
         }
       }
     } catch (e) {}
@@ -1289,8 +1291,17 @@ export const fetchFundData = async (c, overrideDataSource) => {
       .catch(() => resolveT(null));
   });
 
-  // 2. 发起估值请求（各数据源统一走 fetchFundValuationBySource）
-  const gzPromise = fetchFundValuationBySource(code, dataSource);
+  // 2. 发起估值请求
+  // 对于已知 valuationSource 为 supabase_qdii 的基金（dataSource=1），直接走 Supabase 查询，
+  // 避免 fundgz JSONP 对 QDII 基金无响应导致等待超时
+  const gzPromise =
+    storedValuationSource === 'supabase_qdii' && normalizeValuationDataSource(dataSource) === 1
+      ? fetchQdiiValuationFromSupabase(code).then((qdii) => {
+          if (qdii) return { code, ...qdii, gsz: null };
+          // Supabase 无数据时回退到常规流程
+          return fetchFundValuationBySource(code, dataSource);
+        })
+      : fetchFundValuationBySource(code, dataSource);
 
   // 3. 编排并合并数据
   return new Promise(async (resolve, reject) => {
@@ -2072,8 +2083,10 @@ export async function fetchFundPeriodReturns(fundCode, { cacheTime = 60 * 60 * 1
   }
 }
 
-export const fetchFundHistory = async (code, range = '1m') => {
+export const fetchFundHistory = async (code, range = '1m', options = {}) => {
   if (typeof window === 'undefined') return [];
+  const { netValueType = 'unit' } = options;
+  const useAccumulatedNetValue = netValueType === 'accumulated';
 
   const end = nowInTz();
   let start = end.clone();
@@ -2101,11 +2114,15 @@ export const fetchFundHistory = async (code, range = '1m') => {
       start = start.subtract(1, 'month');
   }
 
-  // 业绩走势统一走 pingzhongdata.Data_netWorthTrend，
+  // 业绩走势默认走 pingzhongdata.Data_netWorthTrend；需要累计净值展示时走 Data_ACWorthTrend。
   // 同时附带 Data_grandTotal（若存在，格式为 [{ name, data: [[ts, val], ...] }, ...]）
   try {
     const pz = await fetchFundPingzhongdata(code);
-    const trend = pz?.Data_netWorthTrend;
+    const unitTrend = pz?.Data_netWorthTrend;
+    const accumulatedTrend = pz?.Data_ACWorthTrend;
+    const hasAccumulatedTrend = isArray(accumulatedTrend) && accumulatedTrend.length > 0;
+    const trend = useAccumulatedNetValue && hasAccumulatedTrend ? accumulatedTrend : unitTrend;
+    const actualNetValueType = useAccumulatedNetValue && hasAccumulatedTrend ? 'accumulated' : 'unit';
     const grandTotal = pz?.Data_grandTotal;
 
     if (isArray(trend) && trend.length) {
@@ -2113,9 +2130,44 @@ export const fetchFundHistory = async (code, range = '1m') => {
       const endMs = end.endOf('day').valueOf();
 
       // 若起始日没有净值，则往前推到最近一日有净值的数据作为有效起始
+      const normalizeTrendPoint = (d) => {
+        if (isArray(d)) {
+          const ts = Number(d[0]);
+          const value = Number(d[1]);
+          if (!Number.isFinite(ts) || !Number.isFinite(value)) return null;
+          return { x: ts, y: value, equityReturn: null };
+        }
+        if (d && isNumber(d.x) && Number.isFinite(Number(d.y))) return d;
+        return null;
+      };
+      const buildValueByDate = (list) => {
+        const out = new Map();
+        if (!isArray(list)) return out;
+        list
+          .map(normalizeTrendPoint)
+          .filter(Boolean)
+          .forEach((d) => {
+            const date = dayjs(d.x).tz(TZ).format('YYYY-MM-DD');
+            out.set(date, Number(d.y));
+          });
+        return out;
+      };
       const validTrend = trend
-        .filter((d) => d && isNumber(d.x) && Number.isFinite(Number(d.y)) && d.x <= endMs)
+        .map(normalizeTrendPoint)
+        .filter((d) => d && d.x <= endMs)
         .sort((a, b) => a.x - b.x);
+      const unitValueByDate = buildValueByDate(unitTrend);
+      const accumulatedValueByDate = buildValueByDate(accumulatedTrend);
+      const unitReturnByDate = new Map();
+      if (useAccumulatedNetValue && isArray(unitTrend)) {
+        unitTrend
+          .filter((d) => d && isNumber(d.x))
+          .forEach((d) => {
+            const date = dayjs(d.x).tz(TZ).format('YYYY-MM-DD');
+            const equityReturn = isNumber(d.equityReturn) ? Number(d.equityReturn) : null;
+            if (equityReturn != null) unitReturnByDate.set(date, equityReturn);
+          });
+      }
       const startDayEndMs = startMs + 24 * 60 * 60 * 1000 - 1;
       const hasPointOnStartDay = validTrend.some((d) => d.x >= startMs && d.x <= startDayEndMs);
       let effectiveStartMs = startMs;
@@ -2129,8 +2181,21 @@ export const fetchFundHistory = async (code, range = '1m') => {
         .map((d) => {
           const value = Number(d.y);
           const date = dayjs(d.x).tz(TZ).format('YYYY-MM-DD');
-          return { date, value };
+          const equityReturn = useAccumulatedNetValue
+            ? (unitReturnByDate.get(date) ?? null)
+            : isNumber(d.equityReturn)
+              ? Number(d.equityReturn)
+              : null;
+          return {
+            date,
+            value,
+            unitNetValue: unitValueByDate.get(date) ?? (actualNetValueType === 'unit' ? value : null),
+            accumulatedNetValue:
+              accumulatedValueByDate.get(date) ?? (actualNetValueType === 'accumulated' ? value : null),
+            equityReturn
+          };
         });
+      out.netValueType = actualNetValueType;
 
       // 解析 Data_grandTotal 为多条对比曲线，使用同一有效起始日
       if (isArray(grandTotal) && grandTotal.length) {
@@ -2166,6 +2231,20 @@ export const fetchFundHistory = async (code, range = '1m') => {
   return [];
 };
 
+export const fetchFundValuationTrend = async (code, range = '3m') => {
+  if (!isSupabaseConfigured) return [];
+  if (!supabase?.functions?.invoke) return [];
+
+  const { data, error } = await withRetry(() =>
+    supabase.functions.invoke('get-fund-valuation-trend', {
+      body: { fund_code: code, range }
+    })
+  );
+
+  if (error || !data || data.error) return [];
+  return isArray(data.data) ? data.data : [];
+};
+
 export const parseFundTextWithLLM = async (text) => {
   if (!text) return null;
   if (!isSupabaseConfigured) return null;
@@ -2178,6 +2257,14 @@ export const parseFundTextWithLLM = async (text) => {
       })
     );
 
+    // 处理每日 OCR 用量限流
+    if (data?.error === 'DAILY_LIMIT_EXCEEDED') {
+      const err = new Error(data.message || '今日 OCR 识别次数已达上限');
+      err.code = 'DAILY_LIMIT_EXCEEDED';
+      err.remaining = 0;
+      throw err;
+    }
+
     if (error) return null;
     if (!data || data.success !== true) return null;
     if (!isArray(data.data)) return null;
@@ -2185,6 +2272,8 @@ export const parseFundTextWithLLM = async (text) => {
     // 保持与旧实现兼容：返回 JSON 字符串，由调用方 JSON.parse
     return JSON.stringify(data.data);
   } catch (e) {
+    // 限流错误向上传播，让调用方捕获并展示提示
+    if (e?.code === 'DAILY_LIMIT_EXCEEDED') throw e;
     return null;
   }
 };
@@ -2212,4 +2301,30 @@ export const fetchFundValuationRanking = async (sort = 3, order = 'desc', page =
 
   // 保持与原 JSONP 返回结构一致：{ Data: { list: [...], ... } }
   return { Data: data.data };
+};
+
+/**
+ * 查询当前用户今日 OCR 剩余可用次数
+ * @param {string} userId 当前用户 ID
+ * @param {number} [maxLimit=5] 每日上限
+ * @returns {Promise<{ remaining: number, used: number, max: number }>}
+ */
+export const fetchOcrDailyRemaining = async (userId, maxLimit = 5) => {
+  if (!userId || !isSupabaseConfigured) return { remaining: maxLimit, used: 0, max: maxLimit };
+
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data, error } = await supabase
+      .from('ocr_daily_usage')
+      .select('count')
+      .eq('user_id', userId)
+      .eq('usage_date', today)
+      .maybeSingle();
+
+    if (error) return { remaining: maxLimit, used: 0, max: maxLimit };
+    const used = data?.count || 0;
+    return { remaining: Math.max(0, maxLimit - used), used, max: maxLimit };
+  } catch {
+    return { remaining: maxLimit, used: 0, max: maxLimit };
+  }
 };

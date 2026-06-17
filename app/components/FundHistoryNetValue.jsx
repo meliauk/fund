@@ -9,20 +9,28 @@ import * as qk from '../lib/query-keys';
 import FundHistoryNetValueModal from './FundHistoryNetValueModal';
 
 /**
- * 历史净值表格行：日期、净值、日涨幅（按日期降序，涨红跌绿）
+ * 历史净值表格行：日期、单位净值、累计净值、日涨幅（按日期降序，涨红跌绿）
  */
 function buildRows(history) {
   if (!isArray(history) || history.length === 0) return [];
   const reversed = [...history].reverse();
   return reversed.map((item, i) => {
     const prev = reversed[i + 1];
-    let dailyChange = null;
-    if (prev && Number.isFinite(item.value) && Number.isFinite(prev.value) && prev.value !== 0) {
-      dailyChange = ((item.value - prev.value) / prev.value) * 100;
+    const unitNetValue = item.unitNetValue ?? item.value;
+    let dailyChange = item.equityReturn ?? null;
+    if (
+      dailyChange == null &&
+      prev &&
+      Number.isFinite(unitNetValue) &&
+      Number.isFinite(prev.unitNetValue) &&
+      prev.unitNetValue !== 0
+    ) {
+      dailyChange = ((unitNetValue - prev.unitNetValue) / prev.unitNetValue) * 100;
     }
     return {
       date: item.date,
-      netValue: item.value,
+      unitNetValue,
+      accumulatedNetValue: item.accumulatedNetValue,
       dailyChange
     };
   });
@@ -36,8 +44,17 @@ const columns = [
     meta: { align: 'left' }
   },
   {
-    accessorKey: 'netValue',
-    header: '净值',
+    accessorKey: 'unitNetValue',
+    header: '单位净值',
+    cell: (info) => {
+      const v = info.getValue();
+      return v != null && Number.isFinite(v) ? Number(v).toFixed(4) : '—';
+    },
+    meta: { align: 'center' }
+  },
+  {
+    accessorKey: 'accumulatedNetValue',
+    header: '累计净值',
     cell: (info) => {
       const v = info.getValue();
       return v != null && Number.isFinite(v) ? Number(v).toFixed(4) : '—';
@@ -71,8 +88,8 @@ export default function FundHistoryNetValue({ code, range = '1m', theme }) {
     isPending: loading,
     isError
   } = useQuery({
-    queryKey: qk.fundHistory(code, range),
-    queryFn: () => fetchFundHistory(code, range),
+    queryKey: qk.fundHistory(code, range, 'accumulated'),
+    queryFn: () => fetchFundHistory(code, range, { netValueType: 'accumulated' }),
     enabled: Boolean(code),
     staleTime: 10 * 60 * 1000
   });

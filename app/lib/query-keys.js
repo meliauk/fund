@@ -16,8 +16,10 @@ export const eastSectorQuote = (secid) => ['eastSectorQuote', String(secid).trim
 /** @param {string} fundCode */
 export const pingzhongdata = (fundCode) => ['pingzhongdata', String(fundCode).trim()];
 
-/** @param {string} code @param {string} range */
-export const fundHistory = (code, range) => ['fundHistory', String(code).trim(), range];
+/** @param {string} code @param {string} range @param {string} netValueType */
+export const fundHistory = (code, range, netValueType = 'unit') => ['fundHistory', code, range, netValueType];
+export const fundValuationTrend = (code, range) => ['fundValuationTrend', code, range];
+export const marketStatus = () => ['marketStatus'];
 
 /** @param {string} val */
 export const fundSearch = (val) => ['fundSearch', String(val).trim()];

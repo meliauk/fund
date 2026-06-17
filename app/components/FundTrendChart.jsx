@@ -27,7 +27,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 const EMPTY_FUND_HISTORY = [];
 const TOOLTIP_SIZE = {
   width: 140,
-  height: 78
+  height: 104
 };
 
 const CHART_COLORS = {
@@ -89,8 +89,8 @@ export default function FundTrendChart({
     isPending: loading,
     isError
   } = useQuery({
-    queryKey: qk.fundHistory(code, range),
-    queryFn: () => fetchFundHistory(code, range),
+    queryKey: qk.fundHistory(code, range, 'accumulated'),
+    queryFn: () => fetchFundHistory(code, range, { netValueType: 'accumulated' }),
     enabled: Boolean(code) && isExpanded,
     staleTime: 10 * 60 * 1000
   });
@@ -317,7 +317,8 @@ export default function FundTrendChart({
                     x: position.left,
                     y: position.top,
                     date: dateStr,
-                    netValue: rawVal,
+                    unitNetValue: data[dataIdx]?.unitNetValue,
+                    accumulatedNetValue: data[dataIdx]?.accumulatedNetValue ?? rawVal,
                     dailyChange,
                     color: mainPt.dataset.borderColor
                   });
@@ -660,19 +661,19 @@ export default function FundTrendChart({
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ width: 10, height: 2, borderRadius: 999, backgroundColor: tooltipInfo.color }} />
-            <span style={{ color: 'var(--muted, #888)' }}>净值</span>
-          </span>
+          <span style={{ color: 'var(--muted, #888)' }}>单位净值</span>
           <span style={{ fontFamily: 'Menlo, Monaco, monospace', fontWeight: '500' }}>
-            {tooltipInfo.netValue != null ? tooltipInfo.netValue.toFixed(4) : '--'}
+            {tooltipInfo.unitNetValue != null ? tooltipInfo.unitNetValue.toFixed(4) : '--'}
           </span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ width: 10, height: 2, borderRadius: 999, backgroundColor: 'transparent' }} />
-            <span style={{ color: 'var(--muted, #888)' }}>日涨幅</span>
+          <span style={{ color: 'var(--muted, #888)' }}>累计净值</span>
+          <span style={{ fontFamily: 'Menlo, Monaco, monospace', fontWeight: '500' }}>
+            {tooltipInfo.accumulatedNetValue != null ? tooltipInfo.accumulatedNetValue.toFixed(4) : '--'}
           </span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
+          <span style={{ color: 'var(--muted, #888)' }}>日涨幅</span>
           <span
             style={{
               fontFamily: 'Menlo, Monaco, monospace',
