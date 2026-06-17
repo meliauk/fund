@@ -1,4 +1,4 @@
-# 实时基金估值 (Real-time Fund Valuation)
+# 基估宝-实时基金估值
 
 一个基于 Next.js 开发的基金估值与重仓股实时追踪工具。采用玻璃拟态设计（Glassmorphism），支持移动端适配。
 预览地址：

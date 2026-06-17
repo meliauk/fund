@@ -504,8 +504,71 @@ export default function FundValuationTrendChart({
     return null;
   }
 
+  const renderTrendTooltip = (className) =>
+    tooltipInfo ? (
+      <div
+        className={`glass trend-tooltip ${className}`}
+        style={{
+          position: 'absolute',
+          left: tooltipInfo.x,
+          top: tooltipInfo.y,
+          pointerEvents: 'none',
+          padding: '12px',
+          borderRadius: '8px',
+          zIndex: 50,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+          background: theme === 'dark' ? 'rgba(15, 23, 42, 0.95)' : undefined,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          width: TOOLTIP_SIZE.width,
+          transition: 'left 0.1s ease, top 0.1s ease, opacity 0.2s',
+          color: 'var(--text-primary)',
+          opacity: 1
+        }}
+      >
+        {/* Top section: Closest source label */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
+          <span style={{ color: 'var(--muted, #888)' }}>最接近数据源</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: 10, height: 2, borderRadius: 999, backgroundColor: tooltipInfo.closestColor }} />
+            <span className="muted" style={{ fontSize: '11px' }}>
+              {tooltipInfo.closestLabel}
+            </span>
+          </span>
+        </div>
+
+        {/* Dashed Divider */}
+        <div
+          className="tooltip-divider"
+          style={{
+            borderTop: '1px dashed var(--glass-border, rgba(128,128,128,0.15))',
+            width: '100%',
+            margin: '0'
+          }}
+        />
+
+        {/* Bottom section: Diff */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
+          <span style={{ color: 'var(--muted, #888)' }}>差值</span>
+          <span
+            style={{
+              fontFamily: 'Menlo, Monaco, monospace',
+              fontWeight: '500',
+              color: tooltipInfo.diff > 0 ? 'var(--danger)' : tooltipInfo.diff < 0 ? 'var(--success)' : 'inherit'
+            }}
+          >
+            {tooltipInfo.diff > 0 ? '+' : ''}
+            {tooltipInfo.diff.toFixed(2)}%
+          </span>
+        </div>
+      </div>
+    ) : null;
+
   const chartBlock = (
-    <>
+    <div className="trend-chart-panel" style={{ position: 'relative' }}>
+      {renderTrendTooltip('trend-tooltip-mobile')}
+
       <div className="row" style={{ marginBottom: 8, gap: 12, alignItems: 'center', flexWrap: 'wrap', fontSize: 11 }}>
         {processedData.datasets.map((series, displayIdx) => {
           const color = series.borderColor;
@@ -612,64 +675,7 @@ export default function FundValuationTrendChart({
           <Line ref={chartRef} data={processedData} options={options} plugins={plugins} />
         )}
 
-        {tooltipInfo && (
-          <div
-            className="glass"
-            style={{
-              position: 'absolute',
-              left: tooltipInfo.x,
-              top: tooltipInfo.y,
-              pointerEvents: 'none',
-              padding: '12px',
-              borderRadius: '8px',
-              zIndex: 50,
-              boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
-              background: theme === 'dark' ? 'rgba(15, 23, 42, 0.95)' : undefined,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px',
-              width: TOOLTIP_SIZE.width,
-              transition: 'left 0.1s ease, top 0.1s ease, opacity 0.2s',
-              color: 'var(--text-primary)',
-              opacity: 1
-            }}
-          >
-            {/* Top section: Closest source label */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
-              <span style={{ color: 'var(--muted, #888)' }}>最接近数据源</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: 10, height: 2, borderRadius: 999, backgroundColor: tooltipInfo.closestColor }} />
-                <span className="muted" style={{ fontSize: '11px' }}>
-                  {tooltipInfo.closestLabel}
-                </span>
-              </span>
-            </div>
-
-            {/* Dashed Divider */}
-            <div
-              style={{
-                borderTop: '1px dashed var(--glass-border, rgba(128,128,128,0.15))',
-                width: '100%',
-                margin: '0'
-              }}
-            />
-
-            {/* Bottom section: Diff */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
-              <span style={{ color: 'var(--muted, #888)' }}>差值</span>
-              <span
-                style={{
-                  fontFamily: 'Menlo, Monaco, monospace',
-                  fontWeight: '500',
-                  color: tooltipInfo.diff > 0 ? 'var(--danger)' : tooltipInfo.diff < 0 ? 'var(--success)' : 'inherit'
-                }}
-              >
-                {tooltipInfo.diff > 0 ? '+' : ''}
-                {tooltipInfo.diff.toFixed(2)}%
-              </span>
-            </div>
-          </div>
-        )}
+        {renderTrendTooltip('trend-tooltip-desktop')}
       </div>
 
       <div className="trend-range-bar">
@@ -687,7 +693,7 @@ export default function FundValuationTrendChart({
           </button>
         ))}
       </div>
-    </>
+    </div>
   );
 
   return (
@@ -721,11 +727,10 @@ export default function FundValuationTrendChart({
         <AnimatePresence>
           {isExpanded && (
             <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
+              initial={{ height: 0, opacity: 0, overflow: 'hidden' }}
+              animate={{ height: 'auto', opacity: 1, transitionEnd: { overflow: 'visible' } }}
+              exit={{ height: 0, opacity: 0, overflow: 'hidden' }}
               transition={{ duration: 0.3, ease: 'easeInOut' }}
-              style={{ overflow: 'hidden' }}
             >
               {chartBlock}
             </motion.div>

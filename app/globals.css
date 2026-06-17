@@ -5043,3 +5043,43 @@ html::-webkit-scrollbar-thumb:active,
 [data-theme='light'] .alert-variant-info [data-slot='alert-description'] {
   color: rgba(2, 132, 199, 0.9) !important;
 }
+
+/* 业绩走势和估值走势的悬浮框：桌面跟随图表点位，移动端绝对悬浮在图例上方 */
+.trend-tooltip-mobile {
+  display: none !important;
+}
+
+@media (max-width: 640px) {
+  .trend-tooltip-desktop {
+    display: none !important;
+  }
+
+  .trend-tooltip-mobile {
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    display: flex !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 6px 12px !important;
+    gap: 8px !important;
+    border-radius: 6px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+    z-index: 999 !important;
+    transform: translateY(calc(-100% - 8px)) !important;
+  }
+
+  .trend-tooltip-mobile > div:not(.tooltip-divider) {
+    justify-content: flex-start !important;
+    gap: 8px;
+    width: 50% !important;
+    min-width: 0;
+  }
+
+  .trend-tooltip-mobile .tooltip-divider {
+    display: none !important;
+  }
+}
