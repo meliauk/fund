@@ -549,7 +549,7 @@ export default function FundValuationTrendChart({
         />
 
         {/* Bottom section: Diff */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
           <span style={{ color: 'var(--muted, #888)' }}>差值</span>
           <span
             style={{
