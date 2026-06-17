@@ -24,6 +24,23 @@ export default function AllSectorsModal({ onClose }) {
   const [sectorSort, setSectorSort] = useState(initialSort); // change_pct, net_inflow
   const [sectorSortOrder, setSectorSortOrder] = useState(initialSortOrder); // desc, asc
 
+  const handleSortChange = (key) => {
+    if (!key || sectorSort === key) {
+      setSectorSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'));
+    } else {
+      setSectorSort(key);
+      setSectorSortOrder('desc');
+    }
+    scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleFilterChange = (v) => {
+    if (v) {
+      setSectorFilter(v);
+      scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   const { data: sectorEstimates } = useQuery({
     queryKey: ['hotSectors'],
     queryFn: async () => {
@@ -78,7 +95,7 @@ export default function AllSectorsModal({ onClose }) {
           <ToggleGroup
             type="single"
             value={sectorFilter}
-            onValueChange={(v) => v && setSectorFilter(v)}
+            onValueChange={handleFilterChange}
             className="bg-black/5 dark:bg-white/10 p-0.5 rounded-md border border-black/5 dark:border-white/5 gap-0 shadow-inner overflow-x-auto no-scrollbar"
           >
             <ToggleGroupItem
@@ -101,14 +118,7 @@ export default function AllSectorsModal({ onClose }) {
           <ToggleGroup
             type="single"
             value={sectorSort}
-            onValueChange={(v) => {
-              if (!v) {
-                setSectorSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'));
-              } else {
-                setSectorSort(v);
-                setSectorSortOrder('desc');
-              }
-            }}
+            onValueChange={handleSortChange}
             className="bg-black/5 dark:bg-white/10 p-0.5 rounded-md border border-black/5 dark:border-white/5 gap-0 shadow-inner overflow-x-auto no-scrollbar"
           >
             <ToggleGroupItem
@@ -202,15 +212,7 @@ export default function AllSectorsModal({ onClose }) {
                   </th>
                   <th
                     className="cursor-pointer select-none"
-                    onClick={() => {
-                      if (sectorSort === 'change_pct') {
-                        setSectorSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'));
-                      } else {
-                        setSectorSort('change_pct');
-                        setSectorSortOrder('desc');
-                      }
-                      scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
+                    onClick={() => handleSortChange('change_pct')}
                     style={{
                       padding: '8px 12px',
                       fontWeight: 600,
@@ -244,15 +246,7 @@ export default function AllSectorsModal({ onClose }) {
                   </th>
                   <th
                     className="cursor-pointer select-none"
-                    onClick={() => {
-                      if (sectorSort === 'net_inflow') {
-                        setSectorSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'));
-                      } else {
-                        setSectorSort('net_inflow');
-                        setSectorSortOrder('desc');
-                      }
-                      scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
+                    onClick={() => handleSortChange('net_inflow')}
                     style={{
                       padding: '8px 12px',
                       fontWeight: 600,
