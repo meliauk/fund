@@ -1,5 +1,5 @@
 'use client';
-import { isNumber } from 'lodash';
+import { isFunction, isNumber } from 'lodash';
 
 import * as React from 'react';
 import { Drawer as DrawerPrimitive } from 'vaul';
@@ -16,12 +16,107 @@ function useScrollLock(open) {
   return React.useMemo(() => (open ? { open } : null), [open]);
 }
 
+/**
+ * 缓存"正常"视口高度（无虚拟键盘时）。
+ * 移动端聚焦输入框后键盘弹出会缩小 visualViewport.height，
+ * 导致 Drawer 基于 vh 计算的高度异常偏小。
+ * 通过缓存正常高度，Drawer 打开时使用缓存值而非被压缩的视口高度。
+ */
+let _cachedNormalViewportHeight = null;
+
+function getViewportHeight() {
+  if (typeof window === 'undefined') return null;
+  const innerHeight = window.innerHeight;
+  const visualHeight = window.visualViewport?.height;
+  const current =
+    Number.isFinite(visualHeight) && visualHeight > 0
+      ? visualHeight
+      : Number.isFinite(innerHeight) && innerHeight > 0
+        ? innerHeight
+        : null;
+  // 更新缓存：首次赋值，或当前视口更大（键盘已收起）时刷新
+  if (current != null && (_cachedNormalViewportHeight == null || current > _cachedNormalViewportHeight)) {
+    _cachedNormalViewportHeight = current;
+  }
+  return current;
+}
+
+/** 获取用于 vh 计算的参考高度：优先使用缓存的正常视口高度，避免键盘弹出干扰 */
+function getReferenceHeight() {
+  getViewportHeight(); // 顺带刷新缓存
+  return _cachedNormalViewportHeight ?? getViewportHeight();
+}
+
 function parseVhToPx(vhStr) {
-  if (isNumber(vhStr)) return vhStr;
+  if (isNumber(vhStr)) return Number.isFinite(vhStr) && vhStr >= 0 ? vhStr : null;
   const match = String(vhStr).match(/^([\d.]+)\s*vh$/);
   if (!match) return null;
-  if (typeof window === 'undefined') return null;
-  return (window.innerHeight * Number(match[1])) / 100;
+  const ratio = Number(match[1]);
+  const viewportHeight = getReferenceHeight();
+  if (!Number.isFinite(ratio) || viewportHeight == null) return null;
+  return (viewportHeight * ratio) / 100;
+}
+
+/**
+ * 将 style 对象中的 vh 值（如 height: '85vh'）转换为 px，
+ * 使用缓存的正常视口高度，避免虚拟键盘弹出导致高度偏小。
+ */
+function convertStyleVhToPx(style) {
+  if (!style || typeof style !== 'object') return style;
+  const result = { ...style };
+  const vhProps = ['height', 'maxHeight', 'minHeight', 'top', 'bottom'];
+  for (const prop of vhProps) {
+    const val = result[prop];
+    if (typeof val === 'string') {
+      const px = parseVhToPx(val);
+      if (px != null) result[prop] = `${px}px`;
+    }
+  }
+  return result;
+}
+
+/**
+ * 将 className 中的 Tailwind vh 任意值类（如 h-[85vh]、max-h-[90vh]、min-h-[20vh]）
+ * 转换为等价的 px 内联样式，避免 CSS vh 受虚拟键盘影响。
+ * 返回 { cleanClassName, overrides } — cleanClassName 为去除已转换类后的字符串，
+ * overrides 为需要合并到 style 中的 px 值。
+ */
+function extractClassNameVhOverrides(className) {
+  if (!className || typeof className !== 'string') return { cleanClassName: className, overrides: {} };
+  const overrides = {};
+  const propMap = { h: 'height', 'max-h': 'maxHeight', 'min-h': 'minHeight' };
+  const cleanParts = [];
+  for (const token of className.split(/\s+/)) {
+    let matched = false;
+    for (const [prefix, cssProp] of Object.entries(propMap)) {
+      const re = new RegExp(`^(?:sm:|md:|lg:|xl:)?(?:data-\\[.*?\\]:)?${prefix}-\\[([\\d.]+)vh\\]$`);
+      const m = token.match(re);
+      if (m) {
+        const px = parseVhToPx(`${m[1]}vh`);
+        if (px != null) overrides[cssProp] = `${px}px`;
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) cleanParts.push(token);
+  }
+  return { cleanClassName: cleanParts.join(' '), overrides };
+}
+
+function safePreventDefault(e) {
+  if (isFunction(e?.preventDefault) && e?.cancelable !== false) e.preventDefault();
+}
+
+function stopEvent(e) {
+  safePreventDefault(e);
+  if (isFunction(e?.stopPropagation)) e.stopPropagation();
+}
+
+function getEventClientY(e) {
+  const nativeEvent = e?.nativeEvent ?? e;
+  const touches = e?.touches ?? nativeEvent?.touches ?? nativeEvent?.changedTouches;
+  const clientY = e?.clientY ?? nativeEvent?.clientY ?? touches?.[0]?.clientY;
+  return Number.isFinite(clientY) ? clientY : null;
 }
 
 function Drawer({ open, ...props }) {
@@ -46,7 +141,7 @@ function DrawerClose({ ...props }) {
   return <DrawerPrimitive.Close data-slot="drawer-close" {...props} />;
 }
 
-function DrawerOverlay({ className, ...props }) {
+function DrawerOverlay({ className, style, ...props }) {
   const ctx = React.useContext(DrawerScrollLockContext);
   const { open = false, ...scrollLockProps } = ctx || {};
 
@@ -56,17 +151,12 @@ function DrawerOverlay({ className, ...props }) {
     const el = overlayRef.current;
     if (!el || !open) return;
 
-    const preventScroll = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-
-    el.addEventListener('touchmove', preventScroll, { passive: false });
-    el.addEventListener('wheel', preventScroll, { passive: false });
+    el.addEventListener('touchmove', stopEvent, { passive: false });
+    el.addEventListener('wheel', stopEvent, { passive: false });
 
     return () => {
-      el.removeEventListener('touchmove', preventScroll);
-      el.removeEventListener('wheel', preventScroll);
+      el.removeEventListener('touchmove', stopEvent);
+      el.removeEventListener('wheel', stopEvent);
     };
   }, [open]);
 
@@ -84,9 +174,9 @@ function DrawerOverlay({ className, ...props }) {
         'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0',
         className
       )}
-      style={{ touchAction: 'none' }}
       {...scrollLockProps}
       {...props}
+      style={{ touchAction: 'none', ...style }}
     />
   );
 }
@@ -97,8 +187,14 @@ function DrawerContent({
   defaultHeight = '77vh',
   minHeight = '20vh',
   maxHeight = '90vh',
+  style: styleProp,
   ...props
 }) {
+  // 将 className 中的 Tailwind vh 类（如 h-[85vh]、max-h-[90vh]）转为 px 内联样式
+  const classNameResult = React.useMemo(() => extractClassNameVhOverrides(className), [className]);
+  const { cleanClassName, overrides: classNameVhOverrides } = classNameResult;
+  // 将 style prop 中的 vh 值（如 height: '85vh'）转为 px
+  const convertedStyleProp = React.useMemo(() => convertStyleVhToPx(styleProp), [styleProp]);
   const [heightPx, setHeightPx] = React.useState(() =>
     typeof window !== 'undefined' ? parseVhToPx(defaultHeight) : null
   );
@@ -110,30 +206,40 @@ function DrawerContent({
 
   React.useEffect(() => {
     const px = parseVhToPx(defaultHeight);
-    if (px != null) setHeightPx(px);
+    if (Number.isFinite(px)) setHeightPx(px);
   }, [defaultHeight]);
 
+  // 键盘出现/消失时自动补偿高度：
+  // - 键盘弹出（视口缩小）→ 保持基于正常视口的高度不变
+  // - 键盘收起（视口恢复）→ 重新按 defaultHeight 同步
   React.useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
     const sync = () => {
-      const max = parseVhToPx(maxHeight);
-      const min = parseVhToPx(minHeight);
-      setHeightPx((prev) => {
-        if (prev == null) return parseVhToPx(defaultHeight);
-        const clamped = Math.min(prev, max ?? prev);
-        return Math.max(clamped, min ?? clamped);
+      // 刷新缓存（如果视口变大了说明键盘收起了）
+      getViewportHeight();
+      setHeightPx(() => {
+        const fallback = parseVhToPx(defaultHeight);
+        return Number.isFinite(fallback) ? fallback : null;
       });
     };
+    // 仅监听 window resize（键盘收起/横竖屏切换），不监听 visualViewport resize
+    // 因为 visualViewport resize 在键盘弹出时也会触发，会导致高度被压缩
     window.addEventListener('resize', sync);
-    return () => window.removeEventListener('resize', sync);
+    return () => {
+      window.removeEventListener('resize', sync);
+    };
   }, [defaultHeight, minHeight, maxHeight]);
 
   const handlePointerDown = React.useCallback(
     (e) => {
-      e.preventDefault();
+      const startY = getEventClientY(e);
+      if (!Number.isFinite(startY)) return;
+      safePreventDefault(e);
       setIsDragging(true);
+      const fallbackHeight = parseVhToPx(defaultHeight);
       dragRef.current = {
-        startY: e.clientY ?? e.touches?.[0]?.clientY,
-        startHeight: heightPx ?? parseVhToPx(defaultHeight) ?? 0
+        startY,
+        startHeight: Number.isFinite(heightPx) ? heightPx : Number.isFinite(fallbackHeight) ? fallbackHeight : 0
       };
     },
     [heightPx, defaultHeight]
@@ -142,29 +248,40 @@ function DrawerContent({
   React.useEffect(() => {
     if (!isDragging) return;
     const move = (e) => {
-      const clientY = e.clientY ?? e.touches?.[0]?.clientY;
+      const clientY = getEventClientY(e);
       const { startY, startHeight } = dragRef.current;
+      if (!Number.isFinite(clientY) || !Number.isFinite(startY) || !Number.isFinite(startHeight)) return;
       const delta = startY - clientY;
-      const next = Math.min(maxPx ?? Infinity, Math.max(minPx ?? 0, startHeight + delta));
-      setHeightPx(next);
+      const lower = Number.isFinite(minPx) ? minPx : 0;
+      const upper = Number.isFinite(maxPx) ? maxPx : Infinity;
+      const next = Math.min(upper, Math.max(lower, startHeight + delta));
+      if (Number.isFinite(next)) setHeightPx(next);
     };
     const up = () => setIsDragging(false);
     document.addEventListener('mousemove', move, { passive: true });
     document.addEventListener('mouseup', up);
     document.addEventListener('touchmove', move, { passive: true });
     document.addEventListener('touchend', up);
+    document.addEventListener('touchcancel', up);
     return () => {
       document.removeEventListener('mousemove', move);
       document.removeEventListener('mouseup', up);
       document.removeEventListener('touchmove', move);
       document.removeEventListener('touchend', up);
+      document.removeEventListener('touchcancel', up);
     };
   }, [isDragging, minPx, maxPx]);
 
   const contentStyle = React.useMemo(() => {
-    if (heightPx == null) return undefined;
-    return { height: `${heightPx}px`, maxHeight: maxPx != null ? `${maxPx}px` : undefined };
-  }, [heightPx, maxPx]);
+    const base = {};
+    if (Number.isFinite(heightPx)) base.height = `${heightPx}px`;
+    if (Number.isFinite(maxPx)) base.maxHeight = `${maxPx}px`;
+    // className vh 转换的 px 值覆盖（优先级高于 defaultHeight 计算值）
+    Object.assign(base, classNameVhOverrides);
+    // 调用者显式传入的 style 最后覆盖（最高优先级）
+    if (convertedStyleProp) Object.assign(base, convertedStyleProp);
+    return Object.keys(base).length > 0 ? base : undefined;
+  }, [heightPx, maxPx, classNameVhOverrides, convertedStyleProp]);
 
   return (
     <DrawerPortal data-slot="drawer-portal">
@@ -179,7 +296,7 @@ function DrawerContent({
           'data-[vaul-drawer-direction=right]:inset-y-0 data-[vaul-drawer-direction=right]:right-0 data-[vaul-drawer-direction=right]:w-3/4 data-[vaul-drawer-direction=right]:border-l data-[vaul-drawer-direction=right]:sm:max-w-sm',
           'data-[vaul-drawer-direction=left]:inset-y-0 data-[vaul-drawer-direction=left]:left-0 data-[vaul-drawer-direction=left]:w-3/4 data-[vaul-drawer-direction=left]:border-r data-[vaul-drawer-direction=left]:sm:max-w-sm',
           'drawer-content-theme',
-          className
+          cleanClassName
         )}
         {...props}
       >
