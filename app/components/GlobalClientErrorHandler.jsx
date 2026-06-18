@@ -11,9 +11,11 @@ export default function GlobalClientErrorHandler() {
       if (
         typeof errorMsg === 'string' &&
         (errorMsg.includes('ResizeObserver loop completed with undelivered notifications') ||
-          errorMsg.includes('ResizeObserver loop limit exceeded'))
+          errorMsg.includes('ResizeObserver loop limit exceeded') ||
+          errorMsg === 'Script error.' ||
+          errorMsg === 'Script error')
       ) {
-        // 忽略良性的 ResizeObserver 警告，这通常是由于一个动画帧内多次改变元素大小引起的，属于浏览器内置安全机制，不会影响业务功能。
+        // 忽略良性的 ResizeObserver 警告，以及因跨域限制隐藏详细信息的 Script error
         return;
       }
 
