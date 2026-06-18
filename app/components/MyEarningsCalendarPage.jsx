@@ -15,6 +15,7 @@ import { cn, formatMoney } from '@/lib/utils';
 import { supabase, isSupabaseConfigured } from '@/app/lib/supabase';
 import { calculateYtdReturnRate, mergeAllScopedDailyEarnings, mergeAllHoldings } from '@/app/lib/dailyEarnings';
 import { storageStore, useUserStore, useStorageStore } from '@/app/stores';
+import { searchFunds } from '@/app/api/fund';
 import { CloseIcon } from './Icons';
 import FitText from './FitText';
 
@@ -184,6 +185,7 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
 
   const [selectedDate, setSelectedDate] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [resolvedNames, setResolvedNames] = useState({});
 
   const mergedEarningsMapForDrawer = useMemo(() => {
     return mergeAllScopedDailyEarnings(fundDailyEarnings);
@@ -197,7 +199,7 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
       const dayData = dates.find((d) => d.date === selectedDate);
       if (dayData && isNumber(dayData.earnings) && Number.isFinite(dayData.earnings)) {
         const fundObj = (funds || []).find((f) => f.code === code);
-        const name = fundObj?.name || code;
+        const name = fundObj?.name || resolvedNames[code] || code;
         let rate = dayData.rate;
         if (!isNumber(rate) || !Number.isFinite(rate)) {
           const cost = Number(dayData.baseCostAmount);
@@ -216,7 +218,42 @@ export default function MyEarningsCalendarPage({ open, onOpenChange, series = []
       }
     }
     return list.sort((a, b) => b.earnings - a.earnings);
-  }, [selectedDate, mergedEarningsMapForDrawer, funds]);
+  }, [selectedDate, mergedEarningsMapForDrawer, funds, resolvedNames]);
+
+  useEffect(() => {
+    if (!drawerOpen || selectedDateFunds.length === 0) return;
+    const fundCodes = (funds || []).map((f) => f.code);
+    const codesToResolve = selectedDateFunds
+      .filter((item) => !fundCodes.includes(item.code) && !resolvedNames[item.code])
+      .map((item) => item.code);
+    if (codesToResolve.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      const entries = await Promise.all(
+        codesToResolve.map(async (code) => {
+          try {
+            const results = await searchFunds(code);
+            const found = results.find((item) => item.CODE === code);
+            return [code, found ? found.NAME || found.SHORTNAME || code : code];
+          } catch {
+            return [code, code];
+          }
+        })
+      );
+      if (cancelled) return;
+      setResolvedNames((prev) => {
+        const next = { ...prev };
+        for (const [code, name] of entries) {
+          if (!prev[code]) next[code] = name;
+        }
+        return next;
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [drawerOpen, selectedDateFunds, funds]);
 
   const [viewTab, setViewTab] = useState('day');
   const [displayMode, setDisplayMode] = useState('amount');
