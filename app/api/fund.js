@@ -1054,6 +1054,57 @@ export async function fetchBestValuationSource(code, jzrq, actualZzl) {
 }
 
 /**
+ * 调用 Supabase RPC 获取基金最佳数据源（从 fund_pingzhongdata 表中预计算的 source 字段）
+ * @param {string} fundCode - 基金编码
+ * @returns {Promise<number|null>} 数据源 ID (1/2/3) 或 null
+ */
+const SOURCE_NAME_TO_ID = { fundgz: 1, sina_ds2: 2, sina_ds3: 3 };
+
+export async function fetchFundBestSource(fundCode) {
+  if (!isSupabaseConfigured) return null;
+  const code = fundCode != null ? String(fundCode).trim() : '';
+  if (!code) return null;
+
+  try {
+    const { data, error } = await supabase.rpc('get_fund_best_source', {
+      p_fund_code: code
+    });
+    if (error || !data?.source) return null;
+    return SOURCE_NAME_TO_ID[data.source] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 批量获取多个基金的最佳数据源
+ * @param {string[]} fundCodes - 基金编码数组
+ * @returns {Promise<Record<string, number>>} 返回对象格式 { "110022": 1, "000001": 2 }
+ */
+export async function fetchFundsBestSources(fundCodes) {
+  if (!isSupabaseConfigured || !isArray(fundCodes) || fundCodes.length === 0) return {};
+
+  try {
+    const { data, error } = await supabase.rpc('get_fund_best_source', {
+      p_fund_codes: fundCodes
+    });
+    if (error || !data) return {};
+
+    // 返回的 data 类似 { "110022": "sina_ds2", "000001": "fundgz" }
+    const result = {};
+    Object.entries(data).forEach(([code, sourceName]) => {
+      const id = SOURCE_NAME_TO_ID[sourceName];
+      if (id != null) {
+        result[code] = id;
+      }
+    });
+    return result;
+  } catch {
+    return {};
+  }
+}
+
+/**
  * 按基金编码与数据源类型获取估值（天天基金 fundgz 或新浪估算曲线末点）。
  * @param {string} code - 基金编码
  * @param {number | string} [dataSource=1] - 1 天天基金；2、3 新浪估算不同口径

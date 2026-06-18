@@ -4136,7 +4136,7 @@ export default function HomePage() {
   }, []);
 
   const handleDataSourceSelect = useCallback(
-    (fundCode, sourceId) => {
+    (fundCode, sourceId, autoSource) => {
       setFunds((prev) => {
         const next = [...prev];
         const idx = next.findIndex((f) => f.code === fundCode);
@@ -4144,6 +4144,7 @@ export default function HomePage() {
           next[idx] = {
             ...next[idx],
             dataSource: sourceId,
+            autoSource: !!autoSource,
             gsz: null,
             gszzl: null,
             gztime: null,

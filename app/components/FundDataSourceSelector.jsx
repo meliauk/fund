@@ -1,13 +1,16 @@
 'use client';
 import { isNumber } from 'lodash';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Loader2, Crown } from 'lucide-react';
-import { fetchFundValuationBySource, fetchBestValuationSource } from '@/app/api/fund';
+import { toast as sonnerToast } from 'sonner';
+import { fetchFundValuationBySource, fetchBestValuationSource, fetchFundBestSource } from '@/app/api/fund';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { useStorageStore } from '@/app/stores';
 
 function formatGszzlEstimate(gszzl) {
   const n = isNumber(gszzl) ? gszzl : Number(gszzl);
@@ -16,6 +19,7 @@ function formatGszzlEstimate(gszzl) {
 }
 
 export default function FundDataSourceSelector({ fund, onClose, onSelect }) {
+  const isAdded = useStorageStore((s) => s.funds?.some((item) => item.code === fund?.code));
   const [sourceId, setSourceId] = useState('1');
   const [loading, setLoading] = useState(true);
   const [estimates, setEstimates] = useState({
@@ -32,6 +36,30 @@ export default function FundDataSourceSelector({ fund, onClose, onSelect }) {
   const [isYesterdayAccuracy, setIsYesterdayAccuracy] = useState(false);
   const [isTodayAccuracy, setIsTodayAccuracy] = useState(false);
   const [accuracyDiffs, setAccuracyDiffs] = useState({});
+
+  // 自动数据源状态
+  const [autoSource, setAutoSource] = useState(!!fund?.autoSource);
+  const [autoLoading, setAutoLoading] = useState(false);
+
+  // 调用 RPC 获取最佳数据源
+  const fetchAndApplyBestSource = useCallback(async (fundCode) => {
+    if (!fundCode) return;
+    setAutoLoading(true);
+    try {
+      const bestId = await fetchFundBestSource(fundCode);
+      if (bestId != null) {
+        setSourceId(String(bestId));
+      } else {
+        sonnerToast.warning('未找到最佳数据源，已自动关闭');
+        setAutoSource(false);
+      }
+    } catch {
+      sonnerToast.warning('获取最佳数据源失败，已自动关闭');
+      setAutoSource(false);
+    } finally {
+      setAutoLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (fund?.dataSource) {
@@ -136,15 +164,34 @@ export default function FundDataSourceSelector({ fund, onClose, onSelect }) {
       setLoading(false);
     });
 
+    // 如果已开启 autoSource，打开弹框时自动调用 RPC
+    if (fund.autoSource) {
+      fetchAndApplyBestSource(fund.code);
+    }
+
     return () => {
       isMounted = false;
     };
   }, []);
 
+  // 自动开关切换处理
+  const handleAutoToggle = useCallback(
+    (checked) => {
+      setAutoSource(checked);
+      if (checked && fund?.code) {
+        fetchAndApplyBestSource(fund.code);
+      }
+    },
+    [fund?.code, fetchAndApplyBestSource]
+  );
+
   const handleConfirm = () => {
-    onSelect(parseInt(sourceId, 10));
+    onSelect(parseInt(sourceId, 10), autoSource);
     onClose();
   };
+
+  // 是否禁用手动选择（自动模式开启时）
+  const isManualDisabled = autoSource;
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
@@ -155,8 +202,40 @@ export default function FundDataSourceSelector({ fund, onClose, onSelect }) {
       >
         <DialogTitle className="sr-only">切换数据源</DialogTitle>
         <div className="title" style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: '18px', fontWeight: 600 }}>切换数据源</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+            <span style={{ fontSize: '18px', fontWeight: 600, flexShrink: 0 }}>切换数据源</span>
+            {isAdded && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: autoSource ? 'color-mix(in srgb, var(--primary) 10%, transparent)' : 'var(--secondary)',
+                  padding: '4px 8px 4px 12px',
+                  borderRadius: '99px',
+                  border: `1px solid ${autoSource ? 'color-mix(in srgb, var(--primary) 20%, transparent)' : 'var(--border)'}`,
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <Label
+                  htmlFor="auto-source-switch"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    color: autoSource ? 'var(--primary)' : 'var(--muted)',
+                    fontWeight: 500,
+                    userSelect: 'none',
+                    margin: 0
+                  }}
+                >
+                  {autoLoading ? <Loader2 className="animate-spin" size={14} /> : <span>自动</span>}
+                </Label>
+                <Switch id="auto-source-switch" size="sm" checked={autoSource} onCheckedChange={handleAutoToggle} />
+              </div>
+            )}
           </div>
         </div>
 
@@ -178,8 +257,17 @@ export default function FundDataSourceSelector({ fund, onClose, onSelect }) {
           ) : (
             <RadioGroup
               value={sourceId}
-              onValueChange={setSourceId}
-              style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
+              onValueChange={(v) => {
+                if (!isManualDisabled) setSourceId(v);
+              }}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                opacity: isManualDisabled ? 0.75 : 1,
+                pointerEvents: isManualDisabled ? 'none' : 'auto',
+                transition: 'opacity 0.2s ease'
+              }}
             >
               {[
                 { id: '1', name: '数据源 1', est: estimates[1] },
@@ -190,7 +278,9 @@ export default function FundDataSourceSelector({ fund, onClose, onSelect }) {
                 return (
                   <div
                     key={item.id}
-                    onClick={() => setSourceId(item.id)}
+                    onClick={() => {
+                      if (!isManualDisabled) setSourceId(item.id);
+                    }}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -201,7 +291,7 @@ export default function FundDataSourceSelector({ fund, onClose, onSelect }) {
                       background: isSelected
                         ? 'color-mix(in srgb, var(--primary) 8%, var(--card))'
                         : 'var(--secondary)',
-                      cursor: 'pointer',
+                      cursor: isManualDisabled ? 'not-allowed' : 'pointer',
                       width: '100%',
                       transition: 'all 0.2s ease'
                     }}
@@ -221,7 +311,11 @@ export default function FundDataSourceSelector({ fund, onClose, onSelect }) {
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                             <Label
                               htmlFor={`source-${item.id}`}
-                              style={{ fontSize: '15px', cursor: 'pointer', fontWeight: 500 }}
+                              style={{
+                                fontSize: '15px',
+                                cursor: isManualDisabled ? 'not-allowed' : 'pointer',
+                                fontWeight: 500
+                              }}
                             >
                               {item.name}
                             </Label>
@@ -326,8 +420,8 @@ export default function FundDataSourceSelector({ fund, onClose, onSelect }) {
             type="button"
             className="button"
             onClick={handleConfirm}
-            disabled={loading}
-            style={{ flex: 1, opacity: loading ? 0.6 : 1 }}
+            disabled={loading || autoLoading}
+            style={{ flex: 1, opacity: loading || autoLoading ? 0.6 : 1 }}
           >
             确定
           </button>

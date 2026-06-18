@@ -10,7 +10,13 @@ import { useStorageStore, storageStore } from '../stores';
 import { recordValuation, setValuationSeries as persistValuationSeries } from '../lib/valuationTimeseries';
 import { DAILY_EARNINGS_SCOPE_ALL } from '@/app/constants';
 import { asyncPool } from '../lib/asyncHelper';
-import { fetchFundData, fetchNetValueRangeFromTrend, fetchFundDividends, fetchFundConfirmDays } from '../api/fund';
+import {
+  fetchFundData,
+  fetchNetValueRangeFromTrend,
+  fetchFundDividends,
+  fetchFundConfirmDays,
+  fetchFundsBestSources
+} from '../api/fund';
 import { TZ } from '../lib/fundHelpers';
 import { getQueryClient } from '../lib/get-query-client';
 
@@ -207,11 +213,38 @@ export function useRefreshManager({ scheduleDcaTrades, processPendingQueue, devi
         const nextFundDividends = { ...currentFundDividends };
         let dividendsChanged = false;
 
+        let bestSourcesMap = {};
+        try {
+          const currentFunds = useStorageStore.getState().funds || [];
+          const autoSourceCodes = currentFunds
+            .filter((f) => f.autoSource && uniqueCodes.includes(f.code))
+            .map((f) => f.code);
+
+          if (autoSourceCodes.length > 0) {
+            bestSourcesMap = await fetchFundsBestSources(autoSourceCodes);
+            if (Object.keys(bestSourcesMap).length > 0) {
+              useStorageStore.getState().setFunds((prev) => {
+                let changed = false;
+                const next = prev.map((f) => {
+                  if (f.autoSource && bestSourcesMap[f.code] && f.dataSource !== bestSourcesMap[f.code]) {
+                    changed = true;
+                    return { ...f, dataSource: bestSourcesMap[f.code] };
+                  }
+                  return f;
+                });
+                return changed ? next : prev;
+              });
+            }
+          }
+        } catch (e) {
+          console.error('批量获取自动数据源失败', e);
+        }
+
         await asyncPool(3, uniqueCodes, async (c) => {
           if (!fundCodeStillInStorage(c)) return;
           let data = null;
           try {
-            data = await fetchFundData(c);
+            data = await fetchFundData(c, bestSourcesMap[c]);
           } catch (e) {
             console.error(`刷新基金 ${c} 失败`, e);
             if (fundCodeStillInStorage(c)) {
@@ -453,6 +486,7 @@ export function useRefreshManager({ scheduleDcaTrades, processPendingQueue, devi
               if (f.addBaseNav != null) merged.addBaseNav = f.addBaseNav;
               if (f.addBaseDate != null) merged.addBaseDate = f.addBaseDate;
               if (f.dataSource != null) merged.dataSource = f.dataSource;
+              if (f.autoSource != null) merged.autoSource = f.autoSource;
               if (f.showImageChart !== undefined) merged.showImageChart = f.showImageChart;
               if (f.confirmDays != null) merged.confirmDays = f.confirmDays;
               if (merged.addedAt == null || merged.addBaseNav == null || merged.addBaseDate == null) {

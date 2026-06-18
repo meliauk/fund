@@ -528,12 +528,19 @@ export default function Index({
                 className="badge-v"
                 style={{
                   cursor: 'pointer',
-                  background: 'var(--primary-light, rgba(34, 211, 238, 0.1))',
-                  color: 'var(--primary)'
+                  background: f.autoSource
+                    ? 'color-mix(in srgb, var(--primary) 12%, transparent)'
+                    : 'var(--primary-light, rgba(34, 211, 238, 0.1))',
+                  color: 'var(--primary)',
+                  border: f.autoSource
+                    ? '1px solid color-mix(in srgb, var(--primary) 25%, transparent)'
+                    : '1px solid transparent',
+                  boxShadow: f.autoSource ? '0 0 8px color-mix(in srgb, var(--primary) 10%, transparent)' : 'none',
+                  transition: 'all 0.2s ease'
                 }}
                 onClick={() => onDataSourceClick?.(f)}
               >
-                <span>数据源</span>
+                <span>{f.autoSource ? '自动源' : '数据源'}</span>
                 <strong>{f.dataSource || 1}</strong>
               </div>
             </TooltipTrigger>
