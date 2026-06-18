@@ -3598,7 +3598,8 @@ export default function HomePage() {
     showMarketIndexOverride,
     showGroupFundSearchOverride,
     isMobileOverride,
-    dynamicStyleOverride
+    dynamicStyleOverride,
+    containerWidthOverride
   ) => {
     e?.preventDefault?.();
     const seconds = secondsOverride ?? tempSeconds;
@@ -3632,7 +3633,7 @@ export default function HomePage() {
     else setDynamicStylePc(nextDynamicStyle);
 
     // 在移动端不裁剪也不修改 pcContainerWidth，直接保留原值
-    let w = Number(containerWidth) || 1200;
+    let w = Number(containerWidthOverride ?? containerWidth) || 1200;
     if (!targetIsMobile) {
       w = Math.min(window.innerWidth, Math.max(600, w));
       setContainerWidth(w);

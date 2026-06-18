@@ -30,6 +30,7 @@ export default function SettingsModal({
 }) {
   const isMobile = useIsMobile();
   const [sliderDragging, setSliderDragging] = useState(false);
+  const sliderDraggingRef = useRef(false);
   const [resetWidthConfirmOpen, setResetWidthConfirmOpen] = useState(false);
   const [localSeconds, setLocalSeconds] = useState(tempSeconds);
   const [localShowMarketIndexPc, setLocalShowMarketIndexPc] = useState(showMarketIndexPc);
@@ -38,10 +39,19 @@ export default function SettingsModal({
   const [localShowGroupFundSearchMobile, setLocalShowGroupFundSearchMobile] = useState(showGroupFundSearchMobile);
   const [localDynamicStylePc, setLocalDynamicStylePc] = useState(dynamicStylePc);
   const [localDynamicStyleMobile, setLocalDynamicStyleMobile] = useState(dynamicStyleMobile);
+  const [localContainerWidth, setLocalContainerWidth] = useState(containerWidth);
   const pageWidthTrackRef = useRef(null);
+  const [viewWidth, setViewWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
 
-  const clampedWidth = Math.min(window.innerWidth, Math.max(600, Number(containerWidth) || 1200));
-  const pageWidthPercent = ((clampedWidth - 600) / (window.innerWidth - 600)) * 100;
+  useEffect(() => {
+    const update = () => setViewWidth(window.innerWidth);
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
+  const clampedWidth = Math.min(viewWidth, Math.max(600, Number(localContainerWidth) || 1200));
+  const widthRange = Math.max(1, viewWidth - 600);
+  const pageWidthPercent = ((clampedWidth - 600) / widthRange) * 100;
 
   const updateWidthByClientX = (clientX) => {
     if (!pageWidthTrackRef.current || !setContainerWidth) return;
@@ -49,14 +59,18 @@ export default function SettingsModal({
     if (!rect.width) return;
     const ratio = (clientX - rect.left) / rect.width;
     const clampedRatio = Math.min(1, Math.max(0, ratio));
-    const rawWidth = 600 + clampedRatio * (window.innerWidth - 600);
+    const rawWidth = 600 + clampedRatio * Math.max(0, viewWidth - 600);
     const snapped = Math.round(rawWidth / 10) * 10;
+    setLocalContainerWidth(snapped);
     setContainerWidth(snapped);
   };
 
   useEffect(() => {
     if (!sliderDragging) return;
-    const onPointerUp = () => setSliderDragging(false);
+    const onPointerUp = () => {
+      sliderDraggingRef.current = false;
+      setSliderDragging(false);
+    };
     document.addEventListener('pointerup', onPointerUp);
     document.addEventListener('pointercancel', onPointerUp);
     return () => {
@@ -93,6 +107,10 @@ export default function SettingsModal({
   useEffect(() => {
     setLocalDynamicStyleMobile(dynamicStyleMobile);
   }, [dynamicStyleMobile]);
+
+  useEffect(() => {
+    setLocalContainerWidth(containerWidth);
+  }, [containerWidth]);
 
   return (
     <Dialog
@@ -185,16 +203,20 @@ export default function SettingsModal({
                   className="group relative"
                   style={{ flex: 1, height: 14, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                   onPointerDown={(e) => {
+                    sliderDraggingRef.current = true;
                     setSliderDragging(true);
                     updateWidthByClientX(e.clientX);
                     e.currentTarget.setPointerCapture?.(e.pointerId);
                   }}
                   onPointerMove={(e) => {
-                    if (!sliderDragging) return;
+                    if (!sliderDraggingRef.current) return;
                     updateWidthByClientX(e.clientX);
                   }}
                 >
-                  <Progress value={pageWidthPercent} />
+                  <Progress
+                    value={pageWidthPercent}
+                    indicatorClassName="!bg-none bg-[var(--primary)] dark:bg-[var(--primary)] !transition-none"
+                  />
                   <div
                     className="pointer-events-none absolute top-1/2 -translate-y-1/2"
                     style={{ left: `${pageWidthPercent}%`, transform: 'translate(-50%, -50%)' }}
@@ -303,7 +325,8 @@ export default function SettingsModal({
                   isMobile ? localShowMarketIndexMobile : localShowMarketIndexPc,
                   isMobile ? localShowGroupFundSearchMobile : localShowGroupFundSearchPc,
                   isMobile,
-                  isMobile ? localDynamicStyleMobile : localDynamicStylePc
+                  isMobile ? localDynamicStyleMobile : localDynamicStylePc,
+                  localContainerWidth
                 )
               }
               disabled={localSeconds < 30}
@@ -321,6 +344,7 @@ export default function SettingsModal({
           confirmVariant="primary"
           onConfirm={() => {
             onResetContainerWidth();
+            setLocalContainerWidth(1200);
             setResetWidthConfirmOpen(false);
           }}
           onCancel={() => setResetWidthConfirmOpen(false)}

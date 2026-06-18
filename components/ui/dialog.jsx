@@ -96,7 +96,7 @@ function DialogContent({ className, children, showCloseButton = true, overlayCla
         onOpenAutoFocus={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => e.preventDefault()}
         className={cn(
-          'fixed top-[50%] left-[50%] z-50 w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-[16px] border border-[var(--border)] text-[var(--foreground)] p-6 dialog-content-shadow outline-none duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg',
+          'fixed inset-0 m-auto z-50 w-full h-fit max-w-[calc(100%-2rem)] gap-4 rounded-[16px] border border-[var(--border)] text-[var(--foreground)] p-6 dialog-content-shadow outline-none duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg',
           'mobile-dialog-glass',
           className
         )}

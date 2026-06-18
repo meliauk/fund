@@ -5,7 +5,7 @@ import { Progress as ProgressPrimitive } from 'radix-ui';
 
 import { cn } from '@/lib/utils';
 
-function Progress({ className, value, ...props }) {
+function Progress({ className, indicatorClassName, value, ...props }) {
   return (
     <ProgressPrimitive.Root
       data-slot="progress"
@@ -30,7 +30,8 @@ function Progress({ className, value, ...props }) {
           // 柔和发光，不喧宾夺主
           'shadow-[0_0_8px_rgba(245,158,11,0.35)] dark:shadow-[0_0_14px_rgba(245,158,11,0.45)]',
           // 平滑进度动画
-          'transition-[transform,box-shadow] duration-250 ease-out'
+          'transition-[transform,box-shadow] duration-250 ease-out',
+          indicatorClassName
         )}
         style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
       />
