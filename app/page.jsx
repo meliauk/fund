@@ -99,7 +99,6 @@ import {
   sanitizeTagRowForStorage,
   serializeTagRecordsForCompare,
   cloneHoldingDeep,
-  seedGroupHoldingsFromGlobal,
   migrateDcaPlansToScoped,
   isNavUpdated
 } from './lib/fundHelpers';
@@ -2642,10 +2641,6 @@ export default function HomePage() {
           setCurrentTab('all');
         }
         // 加载持仓数据
-        const seedGh = seedGroupHoldingsFromGlobal(holdings, isArray(groups) ? groups : [], groupHoldings);
-        if (seedGh.changed) {
-          setGroupHoldings(seedGh.next);
-        }
         const migratedDca = migrateDcaPlansToScoped(isPlainObject(dcaPlans) ? dcaPlans : {});
         if (JSON.stringify(migratedDca) !== JSON.stringify(dcaPlans)) {
           setDcaPlans(migratedDca);
@@ -2670,16 +2665,6 @@ export default function HomePage() {
     if (!hasLocalTabInitRef.current) return;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentTab]);
-
-  // 全局持仓或分组成员变化时，按分组幂等补全子账本（不覆盖已有分组持仓）
-  useEffect(() => {
-    if (!hasLocalTabInitRef.current) return;
-    setGroupHoldings((prev) => {
-      const { next, changed } = seedGroupHoldingsFromGlobal(holdings, groups, prev);
-      if (!changed) return prev;
-      return next;
-    });
-  }, [holdings, groups]);
 
   // 记录用户当前选择的分组（仅本地存储，不同步云端）
   useEffect(() => {

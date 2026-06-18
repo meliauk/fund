@@ -21,7 +21,6 @@ import {
   stripLegacyTagsFromFundObject,
   getFundCodesFromTagRecord,
   sanitizeTagRowForStorage,
-  seedGroupHoldingsFromGlobal,
   migrateDcaPlansToScoped,
   nowInTz,
   toTz
@@ -1006,10 +1005,6 @@ export function useSyncManager({ showToast, refreshAllRef, setTempSeconds, setFu
         const cloudGroupIds = new Set(nextGroups.map((g) => g?.id).filter(Boolean));
 
         let nextGroupHoldings = isPlainObject(cloudData.groupHoldings) ? cloudData.groupHoldings : {};
-        const seedAfterCloud = seedGroupHoldingsFromGlobal(nextHoldings, nextGroups, nextGroupHoldings);
-        if (seedAfterCloud.changed) {
-          nextGroupHoldings = seedAfterCloud.next;
-        }
         useStorageStore.getState().setGroupHoldings(nextGroupHoldings);
 
         if (hasOwn(cloudData, 'pendingTrades')) {

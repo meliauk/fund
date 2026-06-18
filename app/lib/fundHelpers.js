@@ -150,52 +150,6 @@ export function normalizeHoldingEntryForSeed(value) {
   return { ...value, share: nextShare, cost: nextCost };
 }
 
-/**
- * 幂等：按分组用全局持仓填空槽；剔除已删除分组的 key；多分组各得深拷贝。
- */
-export function seedGroupHoldingsFromGlobal(globalHoldings, groups, prevGroupHoldings) {
-  const prev = isPlainObject(prevGroupHoldings) ? prevGroupHoldings : {};
-  const groupIdSet = new Set(groups.map((g) => g?.id).filter(Boolean));
-  const next = {};
-  for (const id of groupIdSet) {
-    next[id] = { ...(isPlainObject(prev[id]) ? prev[id] : {}) };
-  }
-  let changed = Object.keys(prev).some((id) => !groupIdSet.has(id));
-  if (!changed && Object.keys(next).length !== Object.keys(prev).filter((id) => groupIdSet.has(id)).length) {
-    changed = true;
-  }
-  if (isPlainObject(globalHoldings)) {
-    for (const g of groups) {
-      if (!g?.id || !groupIdSet.has(g.id)) continue;
-      const bucket = next[g.id];
-      for (const code of g.codes || []) {
-        if (!code || bucket[code] !== undefined) continue;
-        const norm = normalizeHoldingEntryForSeed(globalHoldings[code]);
-        if (!norm) continue;
-        const cloned = cloneHoldingDeep(norm);
-        if (cloned) {
-          bucket[code] = cloned;
-          changed = true;
-        }
-      }
-    }
-  }
-  if (!changed) {
-    const prevKeys = Object.keys(prev).sort();
-    const nextKeys = Object.keys(next).sort();
-    if (prevKeys.join(',') !== nextKeys.join(',')) changed = true;
-    else {
-      for (const id of nextKeys) {
-        if (JSON.stringify(next[id]) !== JSON.stringify(prev[id])) {
-          changed = true;
-          break;
-        }
-      }
-    }
-  }
-  return { next, changed };
-}
-
 /** 旧版扁平 dcaPlans（code -> plan）→ { __global__: { ... } } */
 export function migrateDcaPlansToScoped(raw) {
   if (!isPlainObject(raw)) return { [DCA_SCOPE_GLOBAL]: {} };
