@@ -121,26 +121,6 @@ function sortableRowA11yProps(attributes) {
   return { ...rest, tabIndex: -1 };
 }
 
-function beginDragScrollLock(scrollYRef, rafRef) {
-  scrollYRef.current = window.scrollY;
-  const tick = () => {
-    if (window.scrollY !== scrollYRef.current) {
-      window.scrollTo(0, scrollYRef.current);
-    }
-    rafRef.current = requestAnimationFrame(tick);
-  };
-  if (rafRef.current) cancelAnimationFrame(rafRef.current);
-  rafRef.current = requestAnimationFrame(tick);
-}
-
-function endDragScrollLock(scrollYRef, rafRef) {
-  if (rafRef.current) cancelAnimationFrame(rafRef.current);
-  rafRef.current = null;
-  if (window.scrollY !== scrollYRef.current) {
-    window.scrollTo(0, scrollYRef.current);
-  }
-}
-
 function EditDragHandleCell({ disabled }) {
   const rowSortable = useContext(RowSortableContext);
   const setActivatorRef = useCallback(
@@ -642,8 +622,7 @@ const MobileFundTable = memo(function MobileFundTable({
   );
 
   const ignoreNextDrawerCloseRef = useRef(false);
-  const dragScrollYRef = useRef(0);
-  const dragScrollRafRef = useRef(null);
+  const isTableDraggingRef = useRef(false);
 
   const onToggleFavoriteRef = useRef(onToggleFavorite);
   const onRemoveFundRef = useRef(onRemoveFund);
@@ -665,26 +644,6 @@ const MobileFundTable = memo(function MobileFundTable({
     onHoldingAmountClickRef.current = onHoldingAmountClick;
     onFundTagsClickRef.current = onFundTagsClick;
   }, [onToggleFavorite, onRemoveFund, onHoldingAmountClick, onFundTagsClick]);
-
-  const handleDragStart = () => {
-    beginDragScrollLock(dragScrollYRef, dragScrollRafRef);
-  };
-
-  const handleDragCancel = () => {
-    endDragScrollLock(dragScrollYRef, dragScrollRafRef);
-  };
-
-  const handleDragEnd = (e) => {
-    const { active, over } = e;
-    if (active && over && active.id !== over.id && onReorder) {
-      const oldIndex = data.findIndex((item) => item.code === active.id);
-      const newIndex = data.findIndex((item) => item.code === over.id);
-      if (oldIndex !== -1 && newIndex !== -1) onReorder(oldIndex, newIndex);
-    }
-    endDragScrollLock(dragScrollYRef, dragScrollRafRef);
-  };
-
-  useEffect(() => () => endDragScrollLock(dragScrollYRef, dragScrollRafRef), []);
 
   const groupKey = currentTab ?? 'all';
   const currentGroupName = useMemo(() => {
@@ -1005,6 +964,73 @@ const MobileFundTable = memo(function MobileFundTable({
       throttledVerticalUpdate.cancel();
     };
   }, [stickyTop]);
+
+  const autoScrollRafRef = useRef(null);
+
+  const stopAutoScroll = useCallback(() => {
+    if (autoScrollRafRef.current) {
+      cancelAnimationFrame(autoScrollRafRef.current);
+      autoScrollRafRef.current = null;
+    }
+  }, []);
+
+  const startAutoScroll = useCallback((direction) => {
+    if (autoScrollRafRef.current) return;
+    const tick = () => {
+      window.scrollBy(0, direction * 12);
+      autoScrollRafRef.current = requestAnimationFrame(tick);
+    };
+    autoScrollRafRef.current = requestAnimationFrame(tick);
+  }, []);
+
+  const handleDragMove = useCallback(
+    (event) => {
+      const { active } = event;
+      const rect = active?.rect?.current?.translated;
+      if (!rect) return;
+
+      // effectiveStickyTop is the sticky offset. Header height is ~36px in MobileFundTable.
+      const headerBottom = effectiveStickyTop + 36;
+      const triggerTop = headerBottom + 40; // 40px trigger zone below the header
+      const triggerBottom = window.innerHeight - 40; // 40px trigger zone above the bottom
+
+      if (rect.top < triggerTop) {
+        startAutoScroll(-1);
+      } else if (rect.bottom > triggerBottom) {
+        startAutoScroll(1);
+      } else {
+        stopAutoScroll();
+      }
+    },
+    [effectiveStickyTop, startAutoScroll, stopAutoScroll]
+  );
+
+  const handleDragStart = useCallback(() => {
+    isTableDraggingRef.current = true;
+  }, []);
+
+  const handleDragCancel = useCallback(() => {
+    isTableDraggingRef.current = false;
+    stopAutoScroll();
+  }, [stopAutoScroll]);
+
+  const handleDragEnd = useCallback(
+    (e) => {
+      const { active, over } = e;
+      if (active && over && active.id !== over.id && onReorder) {
+        const oldIndex = data.findIndex((item) => item.code === active.id);
+        const newIndex = data.findIndex((item) => item.code === over.id);
+        if (oldIndex !== -1 && newIndex !== -1) onReorder(oldIndex, newIndex);
+      }
+      isTableDraggingRef.current = false;
+      stopAutoScroll();
+    },
+    [data, onReorder, stopAutoScroll]
+  );
+
+  useEffect(() => {
+    return () => stopAutoScroll();
+  }, [stopAutoScroll]);
 
   useEffect(() => {
     const tableEl = tableContainerRef.current;
@@ -2871,6 +2897,7 @@ const MobileFundTable = memo(function MobileFundTable({
               sensors={sensors}
               collisionDetection={closestCenter}
               onDragStart={handleDragStart}
+              onDragMove={handleDragMove}
               onDragEnd={handleDragEnd}
               onDragCancel={handleDragCancel}
               modifiers={[restrictToVerticalAxis, restrictToParentElement]}

@@ -128,26 +128,6 @@ function sortableRowA11yProps(attributes) {
   return { ...rest, tabIndex: -1 };
 }
 
-function beginDragScrollLock(scrollYRef, rafRef) {
-  scrollYRef.current = window.scrollY;
-  const tick = () => {
-    if (window.scrollY !== scrollYRef.current) {
-      window.scrollTo(0, scrollYRef.current);
-    }
-    rafRef.current = requestAnimationFrame(tick);
-  };
-  if (rafRef.current) cancelAnimationFrame(rafRef.current);
-  rafRef.current = requestAnimationFrame(tick);
-}
-
-function endDragScrollLock(scrollYRef, rafRef) {
-  if (rafRef.current) cancelAnimationFrame(rafRef.current);
-  rafRef.current = null;
-  if (window.scrollY !== scrollYRef.current) {
-    window.scrollTo(0, scrollYRef.current);
-  }
-}
-
 function SortableRow({ row, children, disabled, enableAnimation = true }) {
   const { attributes, listeners, transform, setNodeRef, setActivatorNodeRef, isDragging } = useSortable({
     id: row.original.code,
@@ -538,8 +518,6 @@ const PcFundTable = memo(function PcFundTable({
   const handleOpenCardDialog = useCallback((row) => {
     setCardDialogRow(row);
   }, []);
-  const dragScrollYRef = useRef(0);
-  const dragScrollRafRef = useRef(null);
   const isTableDraggingRef = useRef(false);
   const tableContainerRef = useRef(null);
   /** 窗口虚拟列表锚点：用于 scrollMargin（.table-scroll-area 仅横向滚动，纵向为整页滚动） */
@@ -551,15 +529,54 @@ const PcFundTable = memo(function PcFundTable({
   const [portalHorizontal, setPortalHorizontal] = useState({ left: 0, right: 0 });
   const enableRowAnimation = data.length <= 40;
 
+  const autoScrollRafRef = useRef(null);
+
+  const stopAutoScroll = useCallback(() => {
+    if (autoScrollRafRef.current) {
+      cancelAnimationFrame(autoScrollRafRef.current);
+      autoScrollRafRef.current = null;
+    }
+  }, []);
+
+  const startAutoScroll = useCallback((direction) => {
+    if (autoScrollRafRef.current) return;
+    const tick = () => {
+      window.scrollBy(0, direction * 12);
+      autoScrollRafRef.current = requestAnimationFrame(tick);
+    };
+    autoScrollRafRef.current = requestAnimationFrame(tick);
+  }, []);
+
+  const handleDragMove = useCallback(
+    (event) => {
+      const { active } = event;
+      const rect = active?.rect?.current?.translated;
+      if (!rect) return;
+
+      // effectiveStickyTop is the sticky offset. Header height is ~45px.
+      const headerBottom = effectiveStickyTop + 45;
+      const triggerTop = headerBottom + 40; // 40px trigger zone below the header
+      const triggerBottom = window.innerHeight - 40; // 40px trigger zone above the bottom
+
+      if (rect.top < triggerTop) {
+        startAutoScroll(-1);
+      } else if (rect.bottom > triggerBottom) {
+        startAutoScroll(1);
+      } else {
+        stopAutoScroll();
+      }
+    },
+    [effectiveStickyTop, startAutoScroll, stopAutoScroll]
+  );
+
   const handleDragStart = (event) => {
     isTableDraggingRef.current = true;
-    beginDragScrollLock(dragScrollYRef, dragScrollRafRef);
     setActiveId(event.active.id);
   };
 
   const handleDragCancel = () => {
     isTableDraggingRef.current = false;
-    endDragScrollLock(dragScrollYRef, dragScrollRafRef);
+    stopAutoScroll();
     setActiveId(null);
   };
 
@@ -573,11 +590,14 @@ const PcFundTable = memo(function PcFundTable({
       }
     }
     isTableDraggingRef.current = false;
-    endDragScrollLock(dragScrollYRef, dragScrollRafRef);
+    stopAutoScroll();
     setActiveId(null);
   };
 
-  useEffect(() => () => endDragScrollLock(dragScrollYRef, dragScrollRafRef), []);
+  useEffect(() => {
+    return () => stopAutoScroll();
+  }, [stopAutoScroll]);
+
   const groupKey = currentTab ?? 'all';
   const currentGroupName = useMemo(() => {
     if (groupKey === 'all') return '全部';
@@ -2729,6 +2749,7 @@ const PcFundTable = memo(function PcFundTable({
               sensors={sensors}
               collisionDetection={closestCenter}
               onDragStart={handleDragStart}
+              onDragMove={handleDragMove}
               onDragEnd={handleDragEnd}
               onDragCancel={handleDragCancel}
               modifiers={[restrictToVerticalAxis]}
@@ -2798,6 +2819,7 @@ const PcFundTable = memo(function PcFundTable({
               sensors={sensors}
               collisionDetection={closestCenter}
               onDragStart={handleDragStart}
+              onDragMove={handleDragMove}
               onDragEnd={handleDragEnd}
               onDragCancel={handleDragCancel}
               modifiers={[restrictToVerticalAxis]}
