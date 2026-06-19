@@ -24,7 +24,7 @@ The `FundCard` component (`app/components/FundCard/index.jsx`) is the core UI el
 
 ## COMPONENT ARCHITECTURE & DEPENDENCIES
 
-- **UI Primitives**: Utilizes `shadcn/ui` components (`Tabs`, `Empty`, `Badge`) for structural elements.
+- **UI Primitives**: Utilizes `sha0dcn/ui` components (`Tabs`, `Empty`, `Badge`) for structural elements.
 - **Sub-components**: `Stat`, `ConsecutiveTrendBadge`, `FundTrendChart`, `FundIntradayChart`, `FundDailyEarnings`.
 - **Animations**: Uses `framer-motion` (`motion.div`, `AnimatePresence`) for smooth expand/collapse transitions of sections like "More" details, holdings lists, and charts.
 

@@ -24,11 +24,12 @@ export default function ScanImportConfirmModal({
 }) {
   const [selectedGroupId, setSelectedGroupId] = useState(currentGroup);
   const [expandAfterAdd, setExpandAfterAdd] = useState(true);
+  const [autoDataSource, setAutoDataSource] = useState(true);
   const allCodeSet = useMemo(() => new Set((existingAllCodes || []).filter(Boolean)), [existingAllCodes]);
   const favCodeSet = useMemo(() => new Set((existingFavCodes || []).filter(Boolean)), [existingFavCodes]);
 
   const handleConfirm = () => {
-    onConfirm(selectedGroupId, expandAfterAdd);
+    onConfirm(selectedGroupId, expandAfterAdd, autoDataSource);
   };
 
   const formatAmount = (val) => {
@@ -194,6 +195,14 @@ export default function ScanImportConfirmModal({
                 添加后展开详情
               </span>
               <Switch checked={expandAfterAdd} onCheckedChange={(checked) => setExpandAfterAdd(!!checked)} />
+            </div>
+            <div
+              style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
+            >
+              <span className="muted" style={{ fontSize: 13 }}>
+                自动数据源
+              </span>
+              <Switch checked={autoDataSource} onCheckedChange={(checked) => setAutoDataSource(!!checked)} />
             </div>
             <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span className="muted" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>

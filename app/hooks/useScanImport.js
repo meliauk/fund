@@ -2,7 +2,7 @@ import { isArray, isFunction } from 'lodash';
 import { useState, useRef } from 'react';
 import { createWorker } from 'tesseract.js';
 import { toast as sonnerToast } from 'sonner';
-import { parseFundTextWithLLM, fetchFundData, searchFunds } from '../api/fund';
+import { parseFundTextWithLLM, fetchFundData, searchFunds, fetchFundsBestSources } from '../api/fund';
 import { recordValuation } from '../lib/valuationTimeseries';
 import { useFundFuzzyMatcher } from './useFundFuzzyMatcher';
 import { useStorageStore, useUserStore, useModalStore } from '../stores';
@@ -335,7 +335,7 @@ export function useScanImport({ setCurrentTab, setValuationSeries, showToast, no
     });
   };
 
-  const confirmScanImport = async (targetGroupId = 'all', expandAfterAdd = true) => {
+  const confirmScanImport = async (targetGroupId = 'all', expandAfterAdd = true, autoDataSource = true) => {
     const parseAmount = (val) => {
       if (!val && val !== 0) return null;
       const num = parseFloat(String(val).replace(/,/g, ''));
@@ -369,6 +369,15 @@ export function useScanImport({ setCurrentTab, setValuationSeries, showToast, no
     setScanImportProgress({ current: 0, total: codes.length, success: 0, failed: 0 });
 
     try {
+      let bestSources = {};
+      if (autoDataSource && codes.length > 0) {
+        try {
+          bestSources = (await fetchFundsBestSources(codes)) || {};
+        } catch (e) {
+          console.error('fetchFundsBestSources error:', e);
+        }
+      }
+
       const newFunds = [];
       const newHoldings = {};
       let successCount = 0;
@@ -381,7 +390,14 @@ export function useScanImport({ setCurrentTab, setValuationSeries, showToast, no
         const existed = funds.some((existing) => existing.code === code);
         try {
           const data = existed ? funds.find((f) => f.code === code) || null : await fetchFundData(code);
-          if (!existed && data) newFunds.push(data);
+          if (!existed && data) {
+            const fundToAdd = { ...data };
+            if (autoDataSource && bestSources[code]) {
+              fundToAdd.autoSource = true;
+              fundToAdd.dataSource = bestSources[code];
+            }
+            newFunds.push(fundToAdd);
+          }
 
           const scannedFund = scannedFunds.find((f) => f.code === code);
           const holdAmounts = parseAmount(scannedFund?.holdAmounts);
