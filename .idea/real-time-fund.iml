@@ -5,6 +5,8 @@
       <excludeFolder url="file://$MODULE_DIR$/.cursor" />
       <excludeFolder url="file://$MODULE_DIR$/.trae" />
       <excludeFolder url="file://$MODULE_DIR$/out" />
+      <excludeFolder url="file://$MODULE_DIR$/.agent" />
+      <excludeFolder url="file://$MODULE_DIR$/.claude" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
