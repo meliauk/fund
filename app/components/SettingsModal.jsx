@@ -42,6 +42,7 @@ export default function SettingsModal({
   const [localContainerWidth, setLocalContainerWidth] = useState(containerWidth);
   const pageWidthTrackRef = useRef(null);
   const [viewWidth, setViewWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+  const maxWidth = Math.max(viewWidth, 2000);
 
   useEffect(() => {
     const update = () => setViewWidth(window.innerWidth);
@@ -49,8 +50,8 @@ export default function SettingsModal({
     return () => window.removeEventListener('resize', update);
   }, []);
 
-  const clampedWidth = Math.min(viewWidth, Math.max(600, Number(localContainerWidth) || 1200));
-  const widthRange = Math.max(1, viewWidth - 600);
+  const clampedWidth = Math.min(maxWidth, Math.max(600, Number(localContainerWidth) || 1200));
+  const widthRange = Math.max(1, maxWidth - 600);
   const pageWidthPercent = ((clampedWidth - 600) / widthRange) * 100;
 
   const updateWidthByClientX = (clientX) => {
@@ -59,7 +60,7 @@ export default function SettingsModal({
     if (!rect.width) return;
     const ratio = (clientX - rect.left) / rect.width;
     const clampedRatio = Math.min(1, Math.max(0, ratio));
-    const rawWidth = 600 + clampedRatio * Math.max(0, viewWidth - 600);
+    const rawWidth = 600 + clampedRatio * Math.max(0, maxWidth - 600);
     const snapped = Math.round(rawWidth / 10) * 10;
     setLocalContainerWidth(snapped);
     setContainerWidth(snapped);
@@ -335,22 +336,22 @@ export default function SettingsModal({
             </button>
           </div>
         </div>
+        {resetWidthConfirmOpen && onResetContainerWidth && (
+          <ConfirmModal
+            title="重置页面宽度"
+            message="是否重置页面宽度为默认值 1200px？"
+            icon={<ResetIcon width="20" height="20" className="shrink-0 text-[var(--primary)]" />}
+            confirmVariant="primary"
+            onConfirm={() => {
+              onResetContainerWidth();
+              setLocalContainerWidth(1200);
+              setResetWidthConfirmOpen(false);
+            }}
+            onCancel={() => setResetWidthConfirmOpen(false)}
+            confirmText="重置"
+          />
+        )}
       </DialogContent>
-      {resetWidthConfirmOpen && onResetContainerWidth && (
-        <ConfirmModal
-          title="重置页面宽度"
-          message="是否重置页面宽度为默认值 1200px？"
-          icon={<ResetIcon width="20" height="20" className="shrink-0 text-[var(--primary)]" />}
-          confirmVariant="primary"
-          onConfirm={() => {
-            onResetContainerWidth();
-            setLocalContainerWidth(1200);
-            setResetWidthConfirmOpen(false);
-          }}
-          onCancel={() => setResetWidthConfirmOpen(false)}
-          confirmText="重置"
-        />
-      )}
     </Dialog>
   );
 }

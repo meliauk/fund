@@ -3621,12 +3621,12 @@ export default function HomePage() {
     // 在移动端不裁剪也不修改 pcContainerWidth，直接保留原值
     let w = Number(containerWidthOverride ?? containerWidth) || 1200;
     if (!targetIsMobile) {
-      w = Math.min(window.innerWidth, Math.max(600, w));
+      w = Math.min(Math.max(window.innerWidth, 2000), Math.max(600, w));
       setContainerWidth(w);
     }
 
     try {
-      const parsed = customSettings || {};
+      const parsed = useStorageStore.getState().customSettings || {};
       if (targetIsMobile) {
         // 仅更新当前运行端对应的开关键，不覆盖 PC 端宽度
         setCustomSettings({
@@ -3651,7 +3651,7 @@ export default function HomePage() {
   const handleResetContainerWidth = () => {
     setContainerWidth(1200);
     try {
-      const parsed = customSettings || {};
+      const parsed = useStorageStore.getState().customSettings || {};
       setCustomSettings({ ...parsed, pcContainerWidth: 1200 });
     } catch {}
   };
@@ -3914,7 +3914,9 @@ export default function HomePage() {
               }
             }
             if (isNumber(mergedSettings.pcContainerWidth) && Number.isFinite(mergedSettings.pcContainerWidth)) {
-              const maxWidth = window.matchMedia('(max-width: 640px)').matches ? 99999 : window.innerWidth;
+              const maxWidth = window.matchMedia('(max-width: 640px)').matches
+                ? 99999
+                : Math.max(window.innerWidth, 2000);
               setContainerWidth(Math.min(maxWidth, Math.max(600, mergedSettings.pcContainerWidth)));
             }
             if (isBoolean(mergedSettings.showMarketIndexPc)) setShowMarketIndexPc(mergedSettings.showMarketIndexPc);

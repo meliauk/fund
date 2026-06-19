@@ -55,7 +55,7 @@ export const useSettingsStore = create((set) => ({
           typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches
             ? 99999
             : typeof window !== 'undefined'
-              ? window.innerWidth
+              ? Math.max(window.innerWidth, 2000)
               : 1200;
         patch.containerWidth = Math.min(maxWidth, Math.max(600, num));
       }
