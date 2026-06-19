@@ -4,7 +4,8 @@ import { useIsMobile } from '@/app/hooks/useIsMobile';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Plus, Tag, X, Pencil } from 'lucide-react';
+import { Plus, Tag, X, Pencil, Sparkles } from 'lucide-react';
+import { supabase, isSupabaseConfigured } from '@/app/lib/supabase';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
@@ -74,6 +75,7 @@ export default function FundTagsEditDialog({
   const optionalPickLockRef = useRef(false);
 
   const [syncModalOpen, setSyncModalOpen] = useState(false);
+  const [suggestedTags, setSuggestedTags] = useState([]);
 
   const syncOptions = useMemo(() => {
     if (!allFunds || allFunds.length === 0) return [];
@@ -180,6 +182,55 @@ export default function FundTagsEditDialog({
     optionalPickLockRef.current = false;
     // 仅在打开或切换基金时从 props 同步；不把 tags 列入依赖，避免父级刷新覆盖未提交的编辑
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, fundCode]);
+
+  /** 弹框打开时查询推荐标签（基于基金 topic → sector_id） */
+  useEffect(() => {
+    if (!open || !fundCode || !isSupabaseConfigured) {
+      setSuggestedTags([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error } = await supabase.rpc('get_fund_recommended_tags', { p_fund_code: fundCode });
+        if (cancelled) return;
+        if (error || !isArray(data) || data.length === 0) {
+          setSuggestedTags([]);
+          return;
+        }
+        const tags = data.flatMap((row) => {
+          const topicStr = String(row?.topic ?? '').trim();
+          const sectorIdStr = String(row?.sector_id ?? '').trim();
+          if (!topicStr || !sectorIdStr) return [];
+
+          const topics = topicStr
+            .split(';')
+            .map((t) => t.trim())
+            .filter(Boolean);
+          const sectorIds = sectorIdStr
+            .split(';')
+            .map((t) => t.trim())
+            .filter(Boolean);
+
+          const result = [];
+          for (let i = 0; i < topics.length; i++) {
+            const t = topics[i];
+            const s = sectorIds[i];
+            if (t && s) {
+              result.push({ id: `default_${s}`, name: t, theme: DEFAULT_TAG_THEME });
+            }
+          }
+          return result;
+        });
+        setSuggestedTags(tags);
+      } catch {
+        if (!cancelled) setSuggestedTags([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [open, fundCode]);
 
   const removeTagFromFund = useCallback(
@@ -458,6 +509,55 @@ export default function FundTagsEditDialog({
           )}
         </div>
       </div>
+
+      {/* ===== 推荐标签区域 ===== */}
+      {suggestedTags.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
+            <h3 className="pc-table-setting-subtitle !mb-0">推荐标签</h3>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {suggestedTags.map((item) => {
+              const existingInPool = (recommendedTagItems || []).find((t) => String(t.id).trim() === item.id);
+              const displayName = existingInPool ? existingInPool.name : item.name;
+              const displayTheme = existingInPool ? existingInPool.theme : item.theme;
+              const themeClass = themeClassByKey.get(displayTheme) || '';
+              const isDefault = displayTheme === DEFAULT_TAG_THEME;
+
+              const alreadyInDraft = Boolean(item.id && draft.some((t) => t.id === item.id));
+              const disabledPick = draft.length >= 30 || alreadyInDraft;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="inline-flex"
+                  disabled={disabledPick}
+                  onClick={() => {
+                    if (disabledPick || optionalPickLockRef.current) return;
+                    optionalPickLockRef.current = true;
+                    addTagToFund(displayName, displayTheme, item.id);
+                    window.setTimeout(() => {
+                      optionalPickLockRef.current = false;
+                    }, 450);
+                  }}
+                >
+                  <Badge
+                    className={cn(
+                      'cursor-pointer font-normal text-[13px]',
+                      themeClass,
+                      disabledPick && 'pointer-events-none opacity-45'
+                    )}
+                    variant={isDefault ? 'outline' : 'default'}
+                  >
+                    {displayName}
+                  </Badge>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <AddTagDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} onAdd={handleAddDialogAdd} />
       <EditTagDialog

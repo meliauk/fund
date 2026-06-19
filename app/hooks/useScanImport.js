@@ -1,11 +1,11 @@
 import { isArray, isFunction } from 'lodash';
 import { useState, useRef } from 'react';
-import { createWorker } from 'tesseract.js';
 import { toast as sonnerToast } from 'sonner';
 import { parseFundTextWithLLM, fetchFundData, searchFunds, fetchFundsBestSources } from '../api/fund';
 import { recordValuation } from '../lib/valuationTimeseries';
 import { useFundFuzzyMatcher } from './useFundFuzzyMatcher';
 import { useStorageStore, useUserStore, useModalStore } from '../stores';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 /**
  * OCR 扫描导入基金的完整流程
@@ -14,11 +14,17 @@ import { useStorageStore, useUserStore, useModalStore } from '../stores';
  *   setCurrentTab: Function,
  *   setValuationSeries: Function,
  *   showToast: Function,
- *   normalizeCode: Function,
- *   dedupeByCode: Function,
+ *   setFundTagRecords: Function
  * }} deps
  */
-export function useScanImport({ setCurrentTab, setValuationSeries, showToast, normalizeCode, dedupeByCode }) {
+export function useScanImport({
+  setCurrentTab,
+  setValuationSeries,
+  showToast,
+  normalizeCode,
+  dedupeByCode,
+  setFundTagRecords
+}) {
   const setSuccessModal = (state) => useModalStore.setState({ successModal: state });
   const user = useUserStore((s) => s.user);
   const funds = useStorageStore((s) => s.funds);
@@ -436,6 +442,79 @@ export function useScanImport({ setCurrentTab, setValuationSeries, showToast, no
           }
         });
         if (Object.keys(nextSeries).length > 0) setValuationSeries((prev) => ({ ...prev, ...nextSeries }));
+
+        // 自动查询并添加推荐标签
+        if (isSupabaseConfigured) {
+          try {
+            const currentTags = useStorageStore.getState().getItem('tags', []);
+            let tagsModified = false;
+
+            for (const f of newFunds) {
+              const code = f.code;
+              try {
+                const { data, error } = await supabase.rpc('get_fund_recommended_tags', { p_fund_code: code });
+                if (!error && isArray(data) && data.length > 0) {
+                  data.forEach((row) => {
+                    const topicStr = String(row?.topic ?? '').trim();
+                    const sectorIdStr = String(row?.sector_id ?? '').trim();
+                    if (!topicStr || !sectorIdStr) return;
+
+                    const topics = topicStr
+                      .split(';')
+                      .map((t) => t.trim())
+                      .filter(Boolean);
+                    const sectorIds = sectorIdStr
+                      .split(';')
+                      .map((t) => t.trim())
+                      .filter(Boolean);
+
+                    for (let i = 0; i < topics.length; i++) {
+                      const topic = topics[i];
+                      const sectorId = sectorIds[i];
+                      if (!topic || !sectorId) continue;
+
+                      const targetId = `default_${sectorId}`;
+                      const existingInPool = currentTags.find((t) => String(t.id).trim() === targetId);
+
+                      const displayName = existingInPool ? existingInPool.name : topic;
+                      const displayTheme = existingInPool ? existingInPool.theme : 'default';
+
+                      const tagIndex = currentTags.findIndex((t) => String(t.id).trim() === targetId);
+                      if (tagIndex >= 0) {
+                        const tagObj = currentTags[tagIndex];
+                        let fCodes = isArray(tagObj.fundCodes) ? [...tagObj.fundCodes] : [];
+                        if (!fCodes.includes(code)) {
+                          fCodes.push(code);
+                          tagObj.fundCodes = fCodes;
+                          tagsModified = true;
+                        }
+                      } else {
+                        currentTags.push({
+                          id: targetId,
+                          name: displayName,
+                          theme: displayTheme,
+                          fundCodes: [code]
+                        });
+                        tagsModified = true;
+                      }
+                    }
+                  });
+                }
+              } catch (e) {
+                console.error('fetch recommended tags error:', e);
+              }
+            }
+
+            if (tagsModified) {
+              useStorageStore.getState().setItem('tags', JSON.stringify(currentTags));
+              if (isFunction(setFundTagRecords)) {
+                setFundTagRecords(currentTags);
+              }
+            }
+          } catch (e) {
+            console.error('auto add tags error:', e);
+          }
+        }
       }
 
       if (Object.keys(newHoldings).length > 0) {
