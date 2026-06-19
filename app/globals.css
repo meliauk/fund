@@ -1512,6 +1512,70 @@ html::-webkit-scrollbar-thumb:active,
   flex: 1 1 auto;
 }
 
+.table-row-scroll .name-cell .code-text {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px 6px;
+  white-space: normal;
+  overflow: visible;
+}
+
+.table-row-scroll .name-cell .pc-name-inline-tags {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  min-width: 0;
+  vertical-align: middle;
+}
+
+.table-row-scroll .name-cell .pc-name-inline-tags [data-slot='badge'] {
+  max-width: 96px;
+  min-height: 18px;
+  padding: 1px 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table-row-scroll .name-cell .pc-name-add-tag-button {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(1px);
+  pointer-events: none;
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease;
+}
+
+.table-row-scroll .name-cell .pc-name-add-tag-button [data-slot='badge'] {
+  min-height: 18px;
+  padding: 1px 6px;
+  border-style: dashed;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.table-row-scroll .name-cell .title-text:hover .pc-name-add-tag-button,
+.table-row-scroll .name-cell .title-text:focus-within .pc-name-add-tag-button {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.table-row-scroll .name-cell .pc-name-add-tag-button:hover [data-slot='badge'] {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
 .table-row-scroll .name-cell .name-text.show-full {
   white-space: normal;
   overflow: visible;
