@@ -1039,6 +1039,13 @@ export async function fetchBestValuationSource(code, jzrq, actualZzl) {
   const c = code != null ? String(code).trim() : '';
   if (!c || !jzrq || !isNumber(actualZzl) || !Number.isFinite(actualZzl)) return null;
 
+  const qc = getQueryClient();
+  const cacheKey = qk.bestValuationSource(c, jzrq, actualZzl);
+  const cached = qc.getQueryData(cacheKey);
+  if (cached !== undefined) {
+    return cached;
+  }
+
   try {
     const { data, error } = await withRetry(() =>
       supabase.functions.invoke('best-valuation-source', {
@@ -1047,7 +1054,9 @@ export async function fetchBestValuationSource(code, jzrq, actualZzl) {
     );
 
     if (error || !data?.success) return null;
-    return data.data || null;
+    const res = data.data || null;
+    qc.setQueryData(cacheKey, res, { staleTime: 60 * 60 * 1000 });
+    return res;
   } catch (e) {
     return null;
   }
@@ -1065,12 +1074,23 @@ export async function fetchFundBestSource(fundCode) {
   const code = fundCode != null ? String(fundCode).trim() : '';
   if (!code) return null;
 
+  const qc = getQueryClient();
+  const cacheKey = qk.fundBestSource(code);
+  const cached = qc.getQueryData(cacheKey);
+  if (cached !== undefined) {
+    return cached;
+  }
+
   try {
     const { data, error } = await supabase.rpc('get_fund_best_source', {
       p_fund_code: code
     });
     if (error || !data?.source) return null;
-    return SOURCE_NAME_TO_ID[data.source] ?? null;
+    const res = SOURCE_NAME_TO_ID[data.source] ?? null;
+    if (res != null) {
+      qc.setQueryData(cacheKey, res, { staleTime: 60 * 60 * 1000 });
+    }
+    return res;
   } catch {
     return null;
   }
@@ -1084,23 +1104,40 @@ export async function fetchFundBestSource(fundCode) {
 export async function fetchFundsBestSources(fundCodes) {
   if (!isSupabaseConfigured || !isArray(fundCodes) || fundCodes.length === 0) return {};
 
+  const qc = getQueryClient();
+  const result = {};
+  const missingCodes = [];
+
+  for (const c of fundCodes) {
+    const code = c != null ? String(c).trim() : '';
+    if (!code) continue;
+    const cached = qc.getQueryData(qk.fundBestSource(code));
+    if (cached !== undefined) {
+      result[code] = cached;
+    } else {
+      missingCodes.push(code);
+    }
+  }
+
+  if (missingCodes.length === 0) return result;
+
   try {
     const { data, error } = await supabase.rpc('get_fund_best_source', {
-      p_fund_codes: fundCodes
+      p_fund_codes: missingCodes
     });
-    if (error || !data) return {};
+    if (error || !data) return result;
 
     // 返回的 data 类似 { "110022": "sina_ds2", "000001": "fundgz" }
-    const result = {};
     Object.entries(data).forEach(([code, sourceName]) => {
       const id = SOURCE_NAME_TO_ID[sourceName];
       if (id != null) {
         result[code] = id;
+        qc.setQueryData(qk.fundBestSource(code), id, { staleTime: 60 * 60 * 1000 });
       }
     });
     return result;
   } catch {
-    return {};
+    return result;
   }
 }
 

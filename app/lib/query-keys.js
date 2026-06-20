@@ -34,3 +34,14 @@ export const ocrDailyRemaining = (userId) => ['ocrDailyRemaining', String(userId
 
 /** @param {string} fundCode */
 export const fundConfirmDays = (fundCode) => ['fundConfirmDays', String(fundCode).trim()];
+
+/** @param {string} code @param {string} jzrq @param {number} actualZzl */
+export const bestValuationSource = (code, jzrq, actualZzl) => [
+  'bestValuationSource',
+  String(code).trim(),
+  jzrq,
+  actualZzl
+];
+
+/** @param {string} fundCode */
+export const fundBestSource = (fundCode) => ['fundBestSource', String(fundCode).trim()];
