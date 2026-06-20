@@ -9,12 +9,21 @@ import { toast as sonnerToast } from 'sonner';
 import { useModalStore } from '../stores';
 
 function getErrorMessage(error) {
-  if (isError(error) && error.message) return error.message;
-  if (isString(error) && error.trim()) return error;
-  if (isString(error?.message) && error.message.trim()) return error.message;
-  if (isString(error?.reason) && error.reason.trim()) return error.reason;
-  if (isString(error?.type) && error.type.trim()) return error.type;
-  return '未知运行错误';
+  let msg = '未知运行错误';
+  if (isError(error) && error.message) msg = error.message;
+  else if (isString(error) && error.trim()) msg = error;
+  else if (isString(error?.message) && error.message.trim()) msg = error.message;
+  else if (isString(error?.reason) && error.reason.trim()) msg = error.reason;
+  else if (isString(error?.type) && error.type.trim()) msg = error.type;
+
+  if (
+    msg.includes('Failed to load chunk') ||
+    msg.includes('Loading chunk') ||
+    (error && (error.name === 'ChunkLoadError' || error.type === 'ChunkLoadError'))
+  ) {
+    return `${msg} (检测到静态资源加载失败，可能是系统发布了新版本，请刷新浏览器页面以解决该问题)`;
+  }
+  return msg;
 }
 
 export function shouldSilenceClientError(error) {
