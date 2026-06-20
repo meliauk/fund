@@ -2,7 +2,7 @@
 import { isNumber } from 'lodash';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, Crown } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { toast as sonnerToast } from 'sonner';
 import { fetchFundValuationBySource, fetchBestValuationSource, fetchFundBestSource } from '@/app/api/fund';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { useStorageStore, useUserStore } from '@/app/stores';
+import DataSourceAccuracyBadge from './DataSourceAccuracyBadge';
 
 function formatGszzlEstimate(gszzl) {
   const n = isNumber(gszzl) ? gszzl : Number(gszzl);
@@ -321,17 +322,7 @@ export default function FundDataSourceSelector({ fund, onClose, onSelect }) {
                               {item.name}
                             </Label>
                             {bestSource === Number(item.id) && (isYesterdayAccuracy || isTodayAccuracy) && (
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] px-1.5 py-0 h-[18px] min-h-0 leading-none font-medium flex items-center gap-1"
-                                style={{
-                                  borderColor: 'rgba(212, 175, 55, 0.5)',
-                                  color: '#D4AF37',
-                                  background: 'rgba(212, 175, 55, 0.1)'
-                                }}
-                              >
-                                <Crown size={10} /> {isTodayAccuracy ? '今日最准' : '昨日最准'}
-                              </Badge>
+                              <DataSourceAccuracyBadge label={isTodayAccuracy ? '今日最准' : '昨日最准'} />
                             )}
                             {valuationSources[item.id] === 'supabase_qdii' && (
                               <Badge

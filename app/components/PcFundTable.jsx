@@ -21,7 +21,7 @@ import { DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors, close
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Plus } from 'lucide-react';
+import { Plus, Sparkles } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import PcTableSettingModal from './PcTableSettingModal';
 import FundCard from './FundCard';
@@ -51,10 +51,13 @@ import MoveGroupModal from './MoveGroupModal';
 import { Badge } from '@/components/ui/badge';
 import { getTagThemeBadgeProps } from '@/app/components/AddTagDialog';
 import { cn } from '@/lib/utils';
+import DataSourceAccuracyBadge from './DataSourceAccuracyBadge';
+import { useDataSourceAccuracyLabels } from '@/app/hooks/useDataSourceAccuracyLabels';
 
 const EditModeContext = createContext({ isEditMode: false, selectedCodes: null, toggleSelected: null });
 
 const NON_FROZEN_COLUMN_IDS = [
+  'dataSource',
   'relatedSector',
   'yesterdayChangePercent',
   'estimateChangePercent',
@@ -79,6 +82,7 @@ const NON_FROZEN_COLUMN_IDS = [
 
 /** 已保存列显示偏好时，新增列默认隐藏；未保存时随「全展示」 */
 const PC_COLUMNS_DEFAULT_HIDDEN_IF_PERSONALIZED = new Set([
+  'dataSource',
   'holdingCost',
   'costNav',
   'sinceAddedChangePercent',
@@ -86,6 +90,7 @@ const PC_COLUMNS_DEFAULT_HIDDEN_IF_PERSONALIZED = new Set([
 ]);
 
 const COLUMN_HEADERS = {
+  dataSource: '数据源',
   relatedSector: '关联板块',
   period1w: '近1周',
   period1m: '近1月',
@@ -896,7 +901,7 @@ const PcFundTable = memo(function PcFundTable({
     }
     const allVisible = {};
     NON_FROZEN_COLUMN_IDS.forEach((id) => {
-      allVisible[id] = true;
+      allVisible[id] = PC_COLUMNS_DEFAULT_HIDDEN_IF_PERSONALIZED.has(id) ? false : true;
     });
     return allVisible;
   })();
@@ -997,7 +1002,7 @@ const PcFundTable = memo(function PcFundTable({
   const handleResetColumnVisibility = () => {
     const allVisible = {};
     NON_FROZEN_COLUMN_IDS.forEach((id) => {
-      allVisible[id] = true;
+      allVisible[id] = PC_COLUMNS_DEFAULT_HIDDEN_IF_PERSONALIZED.has(id) ? false : true;
     });
     setColumnVisibility(allVisible);
   };
@@ -1121,6 +1126,8 @@ const PcFundTable = memo(function PcFundTable({
   }, [stickyTop]);
 
   const relatedSectorEnabled = columnVisibility?.relatedSector !== false;
+  const dataSourceEnabled = columnVisibility?.dataSource !== false;
+  const dataSourceAccuracyLabels = useDataSourceAccuracyLabels(data, dataSourceEnabled);
   const relatedSectorCacheRef = useRef(new Map());
   const [relatedSectorByCode, setRelatedSectorByCode] = useState({});
   const [sectorQuoteByLabel, setSectorQuoteByLabel] = useState({});
@@ -1482,6 +1489,51 @@ const PcFundTable = memo(function PcFundTable({
         meta: {
           align: 'left',
           cellClassName: 'name-cell'
+        }
+      },
+      {
+        id: 'dataSource',
+        header: '数据源',
+        size: 90,
+        minSize: 80,
+        cell: (info) => {
+          const original = info.row.original || {};
+          const autoSource = !!original.rawFund?.autoSource;
+          const dataSource = original.rawFund?.dataSource || 1;
+          const text = autoSource ? `自动源${dataSource}` : `数据源${dataSource}`;
+          const accuracyLabel = dataSourceAccuracyLabels?.[original.rawFund?.code || original.code];
+          return (
+            <div
+              style={{
+                width: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              <Badge
+                variant="outline"
+                className={cn(
+                  'font-normal text-[11px] cursor-pointer hover:border-primary/50 transition-colors',
+                  autoSource ? 'border-primary/30 text-primary bg-primary/5' : 'text-muted-foreground border-border'
+                )}
+                style={autoSource ? { gap: '2px' } : {}}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  useModalStore.setState({ dataSourceModal: { open: true, fund: original.rawFund } });
+                }}
+              >
+                {autoSource && <Sparkles size={10} style={{ opacity: 0.8 }} />}
+                {text}
+              </Badge>
+              <DataSourceAccuracyBadge label={accuracyLabel} />
+            </div>
+          );
+        },
+        meta: {
+          align: 'center'
         }
       },
       {
@@ -2464,6 +2516,7 @@ const PcFundTable = memo(function PcFundTable({
       relatedSectorByCode,
       sectorQuoteByLabel,
       periodReturnsByCode,
+      dataSourceAccuracyLabels,
       batchRemoveEnabled,
       batchSelectableCount,
       selectedCount,
