@@ -1,13 +1,13 @@
 'use client';
 import { useIsMobile } from '@/app/hooks/useIsMobile';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { AnimatePresence, motion, Reorder, useDragControls } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { useStorageStore, DEFAULT_SORT_RULES } from '@/app/stores';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from '@/components/ui/drawer';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { CloseIcon, DragIcon, ResetIcon, SettingsIcon } from './Icons';
+import { CloseIcon, DragIcon, ResetIcon, SettingsIcon, ArrowUpToLineIcon } from './Icons';
 import ConfirmModal from './ConfirmModal';
 
 function SortSettingReorderItem({
@@ -19,7 +19,10 @@ function SortSettingReorderItem({
   commitAlias,
   cancelAlias,
   handleToggle,
-  setIsReordering
+  setIsReordering,
+  onDragStart,
+  onDragEnd,
+  onMoveToTop
 }) {
   const isMobile = useIsMobile();
   const dragControls = useDragControls();
@@ -43,8 +46,14 @@ function SortSettingReorderItem({
       style={isMobile ? { touchAction: 'pan-y' } : undefined}
       dragListener={false}
       dragControls={dragControls}
-      onDragStart={() => setIsReordering?.(true)}
-      onDragEnd={() => setIsReordering?.(false)}
+      onDragStart={() => {
+        setIsReordering?.(true);
+        onDragStart?.();
+      }}
+      onDragEnd={() => {
+        setIsReordering?.(false);
+        onDragEnd?.();
+      }}
     >
       <div
         className="drag-handle"
@@ -65,6 +74,25 @@ function SortSettingReorderItem({
       >
         <DragIcon width="18" height="18" />
       </div>
+      {onMoveToTop && (
+        <button
+          type="button"
+          className="icon-button"
+          onClick={() => onMoveToTop(item.id)}
+          title="置顶"
+          style={{
+            border: 'none',
+            background: 'transparent',
+            padding: '0 8px 0 0',
+            color: 'var(--muted)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center'
+          }}
+        >
+          <ArrowUpToLineIcon width="16" height="16" />
+        </button>
+      )}
       <div
         style={{
           flex: 1,
@@ -206,12 +234,23 @@ export default function SortSettingModal({ open, onClose }) {
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [isReordering, setIsReordering] = useState(false);
 
+  const isDraggingRef = useRef(false);
+  const timerRef = useRef(null);
+  const localRulesRef = useRef(localRules);
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    localRulesRef.current = localRules;
+  }, [localRules]);
+
   useEffect(() => {
     if (open) {
-      const defaultRule = (sortRules || []).find((item) => item.id === 'default');
-      const otherRules = (sortRules || []).filter((item) => item.id !== 'default');
-      const ordered = defaultRule ? [defaultRule, ...otherRules] : otherRules;
-      setLocalRules(ordered);
+      if (!isDraggingRef.current && !timerRef.current) {
+        const defaultRule = (sortRules || []).find((item) => item.id === 'default');
+        const otherRules = (sortRules || []).filter((item) => item.id !== 'default');
+        const ordered = defaultRule ? [defaultRule, ...otherRules] : otherRules;
+        setLocalRules(ordered);
+      }
       const prev = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
       return () => {
@@ -220,22 +259,60 @@ export default function SortSettingModal({ open, onClose }) {
     }
   }, [open, sortRules]);
 
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open && timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+      setSortRules(localRulesRef.current);
+    }
+  }, [open]);
+
   const handleReorder = (nextItems) => {
-    // 基于当前 localRules 计算新顺序（默认规则固定在首位）
     const defaultRule = (localRules || []).find((item) => item.id === 'default');
     const combined = defaultRule ? [defaultRule, ...nextItems] : nextItems;
     setLocalRules(combined);
-    queueMicrotask(() => {
-      setSortRules(combined);
-    });
   };
 
   const handleToggle = (id) => {
     const next = (localRules || []).map((item) => (item.id === id ? { ...item, enabled: !item.enabled } : item));
     setLocalRules(next);
-    queueMicrotask(() => {
-      setSortRules(next);
-    });
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    setSortRules(next);
+  };
+
+  const handleMoveToTop = (itemId) => {
+    const defaultRule = (localRules || []).find((item) => item.id === 'default');
+    const otherRules = (localRules || []).filter((item) => item.id !== 'default');
+
+    const itemToMove = otherRules.find((r) => r.id === itemId);
+    if (!itemToMove) return;
+    const remainingRules = otherRules.filter((r) => r.id !== itemId);
+
+    const combined = defaultRule ? [defaultRule, itemToMove, ...remainingRules] : [itemToMove, ...remainingRules];
+    setLocalRules(combined);
+
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+    timerRef.current = setTimeout(() => {
+      setSortRules(localRulesRef.current);
+      timerRef.current = null;
+    }, 1000);
   };
 
   const startEditAlias = (item) => {
@@ -255,7 +332,10 @@ export default function SortSettingModal({ open, onClose }) {
       return next;
     });
     if (nextRules) {
-      // 将 store 状态更新放到微任务中，避免在渲染过程中触发状态变更
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
       queueMicrotask(() => {
         setSortRules(nextRules);
       });
@@ -272,7 +352,10 @@ export default function SortSettingModal({ open, onClose }) {
   if (!open) return null;
 
   const body = (
-    <div className={isMobile ? 'mobile-setting-body flex flex-1 flex-col overflow-y-auto' : 'pc-table-setting-body'}>
+    <div
+      ref={scrollRef}
+      className={isMobile ? 'mobile-setting-body flex flex-1 flex-col overflow-y-auto' : 'pc-table-setting-body'}
+    >
       <div
         style={{
           display: 'flex',
@@ -438,6 +521,24 @@ export default function SortSettingModal({ open, onClose }) {
                     cancelAlias={cancelAlias}
                     handleToggle={handleToggle}
                     setIsReordering={setIsReordering}
+                    onDragStart={() => {
+                      isDraggingRef.current = true;
+                      if (timerRef.current) {
+                        clearTimeout(timerRef.current);
+                        timerRef.current = null;
+                      }
+                    }}
+                    onDragEnd={() => {
+                      isDraggingRef.current = false;
+                      if (timerRef.current) {
+                        clearTimeout(timerRef.current);
+                      }
+                      timerRef.current = setTimeout(() => {
+                        setSortRules(localRulesRef.current);
+                        timerRef.current = null;
+                      }, 1000);
+                    }}
+                    onMoveToTop={handleMoveToTop}
                   />
                 ))}
             </AnimatePresence>
@@ -458,6 +559,10 @@ export default function SortSettingModal({ open, onClose }) {
           confirmVariant="primary"
           confirmText="恢复默认"
           onConfirm={() => {
+            if (timerRef.current) {
+              clearTimeout(timerRef.current);
+              timerRef.current = null;
+            }
             setResetConfirmOpen(false);
             queueMicrotask(() => {
               setSortRules(DEFAULT_SORT_RULES);
@@ -496,7 +601,7 @@ export default function SortSettingModal({ open, onClose }) {
               <CloseIcon width="20" height="20" />
             </DrawerClose>
           </DrawerHeader>
-          <div className="flex-1 overflow-y-auto">{body}</div>
+          {body}
         </DrawerContent>
         {resetConfirm}
       </Drawer>

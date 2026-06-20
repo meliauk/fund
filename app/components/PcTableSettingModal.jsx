@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import ConfirmModal from './ConfirmModal';
 import SuccessModal from './SuccessModal';
 import SyncPersonalSettingsModal from './SyncPersonalSettingsModal';
-import { CloseIcon, DragIcon, RefreshIcon, ResetIcon, SettingsIcon, PinIcon } from './Icons';
+import { CloseIcon, DragIcon, RefreshIcon, ResetIcon, SettingsIcon, PinIcon, ArrowUpToLineIcon } from './Icons';
 
 /**
  * PC 表格个性化设置侧弹框
@@ -51,6 +51,38 @@ export default function PcTableSettingModal({
   const [syncSuccessOpen, setSyncSuccessOpen] = useState(false);
   const scrollRef = useRef(null);
 
+  const [localColumns, setLocalColumns] = useState(columns);
+  const isDraggingRef = useRef(false);
+  const timerRef = useRef(null);
+  const localColumnsRef = useRef(localColumns);
+
+  useEffect(() => {
+    localColumnsRef.current = localColumns;
+  }, [localColumns]);
+
+  useEffect(() => {
+    if (open && !isDraggingRef.current && !timerRef.current) {
+      setLocalColumns(columns);
+    }
+  }, [open, columns]);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open && timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+      const newOrder = localColumnsRef.current.map((item) => item.id);
+      onColumnReorder?.(newOrder);
+    }
+  }, [open]);
+
   useEffect(() => {
     if (!open) {
       setResetOrderConfirmOpen(false);
@@ -69,17 +101,51 @@ export default function PcTableSettingModal({
     }
   }, [open]);
 
-  const pinnedItems = columns.filter((c) => pinnedColumns.includes(c.id));
-  const unpinnedItems = columns.filter((c) => !pinnedColumns.includes(c.id));
+  const pinnedItems = localColumns.filter((c) => pinnedColumns.includes(c.id));
+  const unpinnedItems = localColumns.filter((c) => !pinnedColumns.includes(c.id));
 
   const handlePinnedReorder = (newPinnedItems) => {
-    const newOrder = [...newPinnedItems.map((item) => item.id), ...unpinnedItems.map((item) => item.id)];
-    onColumnReorder?.(newOrder);
+    const newOrder = [...newPinnedItems, ...unpinnedItems];
+    setLocalColumns(newOrder);
   };
 
   const handleUnpinnedReorder = (newUnpinnedItems) => {
-    const newOrder = [...pinnedItems.map((item) => item.id), ...newUnpinnedItems.map((item) => item.id)];
-    onColumnReorder?.(newOrder);
+    const newOrder = [...pinnedItems, ...newUnpinnedItems];
+    setLocalColumns(newOrder);
+  };
+
+  const handleMoveToTop = (itemId) => {
+    const isPinned = pinnedColumns.includes(itemId);
+    if (isPinned) {
+      const localPinned = localColumns.filter((c) => pinnedColumns.includes(c.id));
+      const localUnpinned = localColumns.filter((c) => !pinnedColumns.includes(c.id));
+      const itemToMove = localPinned.find((c) => c.id === itemId);
+      if (!itemToMove) return;
+      const remainingPinned = localPinned.filter((c) => c.id !== itemId);
+      const newOrder = [itemToMove, ...remainingPinned, ...localUnpinned];
+      setLocalColumns(newOrder);
+    } else {
+      const localPinned = localColumns.filter((c) => pinnedColumns.includes(c.id));
+      const localUnpinned = localColumns.filter((c) => !pinnedColumns.includes(c.id));
+      const itemToMove = localUnpinned.find((c) => c.id === itemId);
+      if (!itemToMove) return;
+      const remainingUnpinned = localUnpinned.filter((c) => c.id !== itemId);
+      const newOrder = [...localPinned, itemToMove, ...remainingUnpinned];
+      setLocalColumns(newOrder);
+    }
+
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+    timerRef.current = setTimeout(() => {
+      const newOrder = localColumnsRef.current.map((item) => item.id);
+      onColumnReorder?.(newOrder);
+      timerRef.current = null;
+    }, 1000);
   };
 
   const renderItem = (item) => (
@@ -91,6 +157,24 @@ export default function PcTableSettingModal({
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}
+      onDragStart={() => {
+        isDraggingRef.current = true;
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+          timerRef.current = null;
+        }
+      }}
+      onDragEnd={() => {
+        isDraggingRef.current = false;
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+        }
+        timerRef.current = setTimeout(() => {
+          const newOrder = localColumnsRef.current.map((item) => item.id);
+          onColumnReorder?.(newOrder);
+          timerRef.current = null;
+        }, 1000);
+      }}
       transition={{
         type: 'spring',
         stiffness: 500,
@@ -137,6 +221,23 @@ export default function PcTableSettingModal({
           <PinIcon width="16" height="16" />
         </button>
       )}
+      <button
+        type="button"
+        className="icon-button"
+        onClick={() => handleMoveToTop(item.id)}
+        title="置顶"
+        style={{
+          border: 'none',
+          background: 'transparent',
+          padding: '0 8px 0 0',
+          color: 'var(--muted)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center'
+        }}
+      >
+        <ArrowUpToLineIcon width="16" height="16" />
+      </button>
       <div style={{ flex: 1, fontSize: '14px', display: 'flex', flexDirection: 'column', gap: 2 }}>
         <span>{item.header}</span>
         {item.id === 'totalChangePercent' && (
@@ -312,7 +413,7 @@ export default function PcTableSettingModal({
                   </button>
                 )}
               </div>
-              {columns.length === 0 ? (
+              {localColumns.length === 0 ? (
                 <div className="muted" style={{ textAlign: 'center', padding: '24px 0', fontSize: '14px' }}>
                   暂无可配置列
                 </div>
@@ -381,6 +482,10 @@ export default function PcTableSettingModal({
           icon={<ResetIcon width="20" height="20" className="shrink-0 text-[var(--primary)]" />}
           confirmVariant="primary"
           onConfirm={() => {
+            if (timerRef.current) {
+              clearTimeout(timerRef.current);
+              timerRef.current = null;
+            }
             onResetColumnOrder?.();
             onResetColumnVisibility?.();
             setResetOrderConfirmOpen(false);

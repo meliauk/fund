@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, Reorder, useDragControls } from 'framer-motion';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from '@/components/ui/drawer';
@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import ConfirmModal from './ConfirmModal';
 import SuccessModal from './SuccessModal';
 import SyncPersonalSettingsModal from './SyncPersonalSettingsModal';
-import { CloseIcon, DragIcon, RefreshIcon, ResetIcon, SettingsIcon } from './Icons';
+import { CloseIcon, DragIcon, RefreshIcon, ResetIcon, SettingsIcon, ArrowUpToLineIcon } from './Icons';
 
 /**
  * 移动端表格个性化设置弹框（底部抽屉，基于 Drawer 组件）
@@ -28,7 +28,16 @@ import { CloseIcon, DragIcon, RefreshIcon, ResetIcon, SettingsIcon } from './Ico
  * @param {(targetIds: string[]) => void} [props.onSyncSettings] - 同步当前设置至目标分组
  * @param {() => void} [props.onSyncSuccess] - 同步成功后的外部提示回调
  */
-function MobileSettingReorderItem({ item, index, columnVisibility, onToggleColumnVisibility, setIsReordering }) {
+function MobileSettingReorderItem({
+  item,
+  index,
+  columnVisibility,
+  onToggleColumnVisibility,
+  setIsReordering,
+  onDragStart,
+  onDragEnd,
+  onMoveToTop
+}) {
   const dragControls = useDragControls();
 
   return (
@@ -40,8 +49,14 @@ function MobileSettingReorderItem({ item, index, columnVisibility, onToggleColum
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}
-      onDragStart={() => setIsReordering(true)}
-      onDragEnd={() => setIsReordering(false)}
+      onDragStart={() => {
+        setIsReordering(true);
+        onDragStart?.();
+      }}
+      onDragEnd={() => {
+        setIsReordering(false);
+        onDragEnd?.();
+      }}
       transition={{
         type: 'spring',
         stiffness: 500,
@@ -72,6 +87,25 @@ function MobileSettingReorderItem({ item, index, columnVisibility, onToggleColum
       >
         <DragIcon width="18" height="18" />
       </div>
+      {onMoveToTop && (
+        <button
+          type="button"
+          className="icon-button"
+          onClick={() => onMoveToTop(item.id)}
+          title="置顶"
+          style={{
+            border: 'none',
+            background: 'transparent',
+            padding: '0 8px 0 0',
+            color: 'var(--muted)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center'
+          }}
+        >
+          <ArrowUpToLineIcon width="16" height="16" />
+        </button>
+      )}
       <div style={{ flex: 1, fontSize: '14px', display: 'flex', flexDirection: 'column', gap: 2 }}>
         <span>{item.header}</span>
         {item.id === 'totalChangePercent' && (
@@ -124,6 +158,39 @@ export default function MobileSettingModal({
   const [syncModalOpen, setSyncModalOpen] = useState(false);
   const [syncSuccessOpen, setSyncSuccessOpen] = useState(false);
 
+  const [localColumns, setLocalColumns] = useState(columns);
+  const isDraggingRef = useRef(false);
+  const timerRef = useRef(null);
+  const localColumnsRef = useRef(localColumns);
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    localColumnsRef.current = localColumns;
+  }, [localColumns]);
+
+  useEffect(() => {
+    if (open && !isDraggingRef.current && !timerRef.current) {
+      setLocalColumns(columns);
+    }
+  }, [open, columns]);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open && timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+      const newOrder = localColumnsRef.current.map((item) => item.id);
+      onColumnReorder?.(newOrder);
+    }
+  }, [open]);
+
   useEffect(() => {
     if (!open) {
       setResetConfirmOpen(false);
@@ -133,8 +200,28 @@ export default function MobileSettingModal({
   }, [open]);
 
   const handleReorder = (newItems) => {
-    const newOrder = newItems.map((item) => item.id);
-    onColumnReorder?.(newOrder);
+    setLocalColumns(newItems);
+  };
+
+  const handleMoveToTop = (itemId) => {
+    const itemToMove = localColumns.find((item) => item.id === itemId);
+    if (!itemToMove) return;
+    const remainingItems = localColumns.filter((item) => item.id !== itemId);
+    const newItems = [itemToMove, ...remainingItems];
+    setLocalColumns(newItems);
+
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+    timerRef.current = setTimeout(() => {
+      const newOrder = localColumnsRef.current.map((item) => item.id);
+      onColumnReorder?.(newOrder);
+      timerRef.current = null;
+    }, 1000);
   };
 
   return (
@@ -187,7 +274,7 @@ export default function MobileSettingModal({
             </DrawerClose>
           </DrawerHeader>
 
-          <div className="mobile-setting-body flex flex-1 flex-col overflow-y-auto">
+          <div className="mobile-setting-body flex flex-1 flex-col overflow-y-auto" ref={scrollRef}>
             {onToggleShowFullFundName && (
               <div
                 style={{
@@ -240,21 +327,21 @@ export default function MobileSettingModal({
                 </button>
               )}
             </div>
-            {columns.length === 0 ? (
+            {localColumns.length === 0 ? (
               <div className="muted" style={{ textAlign: 'center', padding: '24px 0', fontSize: '14px' }}>
                 暂无可配置列
               </div>
             ) : (
               <Reorder.Group
                 axis="y"
-                values={columns}
+                values={localColumns}
                 onReorder={handleReorder}
                 className="mobile-setting-list"
                 layoutScroll
                 style={{ touchAction: 'pan-y' }}
               >
                 <AnimatePresence mode="popLayout">
-                  {columns.map((item, index) => (
+                  {localColumns.map((item, index) => (
                     <MobileSettingReorderItem
                       key={item.id || `col-${index}`}
                       item={item}
@@ -262,6 +349,25 @@ export default function MobileSettingModal({
                       columnVisibility={columnVisibility}
                       onToggleColumnVisibility={onToggleColumnVisibility}
                       setIsReordering={setIsReordering}
+                      onDragStart={() => {
+                        isDraggingRef.current = true;
+                        if (timerRef.current) {
+                          clearTimeout(timerRef.current);
+                          timerRef.current = null;
+                        }
+                      }}
+                      onDragEnd={() => {
+                        isDraggingRef.current = false;
+                        if (timerRef.current) {
+                          clearTimeout(timerRef.current);
+                        }
+                        timerRef.current = setTimeout(() => {
+                          const newOrder = localColumnsRef.current.map((item) => item.id);
+                          onColumnReorder?.(newOrder);
+                          timerRef.current = null;
+                        }, 1000);
+                      }}
+                      onMoveToTop={handleMoveToTop}
                     />
                   ))}
                 </AnimatePresence>
@@ -280,6 +386,10 @@ export default function MobileSettingModal({
             icon={<ResetIcon width="20" height="20" className="shrink-0 text-[var(--primary)]" />}
             confirmVariant="primary"
             onConfirm={() => {
+              if (timerRef.current) {
+                clearTimeout(timerRef.current);
+                timerRef.current = null;
+              }
               onResetColumnOrder?.();
               onResetColumnVisibility?.();
               setResetConfirmOpen(false);
