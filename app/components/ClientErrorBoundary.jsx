@@ -21,7 +21,7 @@ function getErrorMessage(error) {
     msg.includes('Loading chunk') ||
     (error && (error.name === 'ChunkLoadError' || error.type === 'ChunkLoadError'))
   ) {
-    return `${msg} (检测到静态资源加载失败，可能是系统发布了新版本，请刷新浏览器页面以解决该问题)`;
+    return `${msg}\n\n提示：检测到静态资源加载失败，可能是系统发布了新版本，请刷新浏览器页面以解决该问题。`;
   }
   return msg;
 }
@@ -47,9 +47,15 @@ export function notifyClientError(error, options = {}) {
     }
   } catch {}
 
+  const desc = message.includes('\n') ? (
+    <span style={{ whiteSpace: 'pre-line', display: 'block', marginTop: '4px' }}>{message}</span>
+  ) : (
+    message
+  );
+
   sonnerToast.error(title, {
     id: options.toastId || 'client-runtime-error',
-    description: message,
+    description: desc,
     duration: 8000
   });
 }
@@ -105,7 +111,7 @@ class ClientErrorBoundaryInner extends React.Component {
             <AlertTriangleIcon className="h-5 w-5 text-destructive" />
             <h1 className="m-0 text-lg font-semibold">页面遇到异常</h1>
           </div>
-          <p className="m-0 text-sm leading-relaxed text-[var(--muted-foreground)]">
+          <p className="m-0 text-sm leading-relaxed text-[var(--muted-foreground)]" style={{ whiteSpace: 'pre-line' }}>
             {getErrorMessage(this.state.error)}
           </p>
           <button
