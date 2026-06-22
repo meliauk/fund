@@ -99,6 +99,8 @@ export default function DcaModal({ fund, plan, onClose, onConfirm, onReset }) {
     return d >= 1 && d <= 28 ? d : 1;
   });
   const [firstDate, setFirstDate] = useState(() => computeFirstDate('monthly', null, null));
+  const ignoreDialogCloseUntilRef = useRef(0);
+  const prevResetConfirmOpenRef = useRef(false);
   const monthlyDayRef = useRef(null);
   const skipNextAutoComputeRef = useRef(false);
 
@@ -154,6 +156,15 @@ export default function DcaModal({ fund, plan, onClose, onConfirm, onReset }) {
     }
   }, [cycle, monthlyDay]);
 
+  useEffect(() => {
+    if (resetConfirmOpen) {
+      ignoreDialogCloseUntilRef.current = Date.now() + 1200;
+    } else if (prevResetConfirmOpenRef.current) {
+      ignoreDialogCloseUntilRef.current = Date.now() + 1200;
+    }
+    prevResetConfirmOpenRef.current = resetConfirmOpen;
+  }, [resetConfirmOpen]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const amt = parseFloat(amount);
@@ -190,6 +201,7 @@ export default function DcaModal({ fund, plan, onClose, onConfirm, onReset }) {
   };
 
   const handleOpenChange = (open) => {
+    if (!open && (resetConfirmOpen || Date.now() < ignoreDialogCloseUntilRef.current)) return;
     if (!open) {
       onClose?.();
     }
@@ -217,6 +229,12 @@ export default function DcaModal({ fund, plan, onClose, onConfirm, onReset }) {
           showCloseButton={false}
           className="glass card modal dca-modal"
           overlayClassName="modal-overlay"
+          onPointerDownOutside={(event) => {
+            if (resetConfirmOpen || Date.now() < ignoreDialogCloseUntilRef.current) event.preventDefault();
+          }}
+          onInteractOutside={(event) => {
+            if (resetConfirmOpen || Date.now() < ignoreDialogCloseUntilRef.current) event.preventDefault();
+          }}
           style={{
             maxWidth: '420px',
             maxHeight: '90vh',
@@ -259,7 +277,7 @@ export default function DcaModal({ fund, plan, onClose, onConfirm, onReset }) {
                       <RotateCcw width="18" height="18" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent>
+                  <TooltipContent className="z-[1010]">
                     <p>{plan ? '重置当前分组定投数据' : '暂无定投数据可重置'}</p>
                   </TooltipContent>
                 </Tooltip>
