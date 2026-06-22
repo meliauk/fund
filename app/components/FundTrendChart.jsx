@@ -652,7 +652,7 @@ export default function FundTrendChart({
           borderRadius: '8px',
           zIndex: 50,
           boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
-          background: theme === 'dark' ? 'rgba(15, 23, 42, 0.95)' : undefined,
+          background: theme === 'dark' ? 'rgba(15, 23, 42, 0.9)' : undefined,
           display: 'flex',
           flexDirection: 'column',
           gap: '10px',
