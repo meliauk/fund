@@ -4062,10 +4062,23 @@ html::-webkit-scrollbar-thumb:active,
   position: relative;
   flex: 1;
   min-width: 0;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  scrollbar-width: none; /* Firefox */
+  cursor: grab;
+  user-select: none;
   /* 动态遮罩，通过 data-mask-* 属性控制 */
   mask-image: none;
   -webkit-mask-image: none;
+}
+
+.tabs-scroll-area:active {
+  cursor: grabbing;
+}
+
+.tabs-scroll-area::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
 }
 
 .tabs-scroll-area[data-mask-left='true'][data-mask-right='true'] {
@@ -4084,15 +4097,11 @@ html::-webkit-scrollbar-thumb:active,
 }
 
 .tabs {
-  display: flex;
-  overflow-x: auto;
+  display: inline-flex;
   white-space: nowrap;
   gap: 4px;
-  padding: 4px 0; /* 移除左右内边距，由 mask 和 scroll 行为控制 */
-  scroll-behavior: smooth;
-  scrollbar-width: none; /* Firefox */
-  cursor: grab;
-  user-select: none;
+  padding: 4px 0;
+  width: max-content;
 }
 
 .tabs::after {
@@ -4100,12 +4109,49 @@ html::-webkit-scrollbar-thumb:active,
   flex: 0 0 16px; /* 末尾留一点空隙，避免贴边 */
 }
 
-.tabs:active {
-  cursor: grabbing;
+/* 选项卡左右滚动按钮（PC端） */
+.tabs-scroll-btn {
+  position: absolute;
+  top: 50%;
+  /* transform is handled by framer-motion to prevent conflict */
+  z-index: 10;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--background) 75%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  color: var(--muted-foreground);
+  cursor: pointer;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.05);
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-.tabs::-webkit-scrollbar {
-  display: none; /* Chrome/Safari */
+.tabs-scroll-btn:hover {
+  background: var(--background);
+  color: var(--foreground);
+  border-color: var(--primary);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.12),
+    0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.tabs-scroll-btn.left {
+  left: 0px;
+}
+
+.tabs-scroll-btn.right {
+  right: 0px;
 }
 
 /* 管理分组弹窗列表 */
