@@ -232,39 +232,41 @@ export default function SettingsModal({
             </div>
           )}
 
-          <div className="form-group" style={{ marginBottom: 16 }}>
-            <div className="muted" style={{ marginBottom: 8, fontSize: '0.8rem' }}>
-              显示大盘指数
+          <div className="row" style={{ gap: 16, marginBottom: 16 }}>
+            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+              <div className="muted" style={{ marginBottom: 8, fontSize: '0.8rem' }}>
+                显示大盘指数
+              </div>
+              <div className="row" style={{ justifyContent: 'flex-start', alignItems: 'center' }}>
+                <Switch
+                  checked={isMobile ? localShowMarketIndexMobile : localShowMarketIndexPc}
+                  className="ml-2 scale-125"
+                  onCheckedChange={(checked) => {
+                    const nextValue = Boolean(checked);
+                    if (isMobile) setLocalShowMarketIndexMobile(nextValue);
+                    else setLocalShowMarketIndexPc(nextValue);
+                  }}
+                  aria-label="显示大盘指数"
+                />
+              </div>
             </div>
-            <div className="row" style={{ justifyContent: 'flex-start', alignItems: 'center' }}>
-              <Switch
-                checked={isMobile ? localShowMarketIndexMobile : localShowMarketIndexPc}
-                className="ml-2 scale-125"
-                onCheckedChange={(checked) => {
-                  const nextValue = Boolean(checked);
-                  if (isMobile) setLocalShowMarketIndexMobile(nextValue);
-                  else setLocalShowMarketIndexPc(nextValue);
-                }}
-                aria-label="显示大盘指数"
-              />
-            </div>
-          </div>
 
-          <div className="form-group" style={{ marginBottom: 16 }}>
-            <div className="muted" style={{ marginBottom: 8, fontSize: '0.8rem' }}>
-              显示分组内基金搜索
-            </div>
-            <div className="row" style={{ justifyContent: 'flex-start', alignItems: 'center' }}>
-              <Switch
-                checked={isMobile ? localShowGroupFundSearchMobile : localShowGroupFundSearchPc}
-                className="ml-2 scale-125"
-                onCheckedChange={(checked) => {
-                  const nextValue = Boolean(checked);
-                  if (isMobile) setLocalShowGroupFundSearchMobile(nextValue);
-                  else setLocalShowGroupFundSearchPc(nextValue);
-                }}
-                aria-label="显示分组内基金搜索"
-              />
+            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+              <div className="muted" style={{ marginBottom: 8, fontSize: '0.8rem' }}>
+                显示分组内基金搜索
+              </div>
+              <div className="row" style={{ justifyContent: 'flex-start', alignItems: 'center' }}>
+                <Switch
+                  checked={isMobile ? localShowGroupFundSearchMobile : localShowGroupFundSearchPc}
+                  className="ml-2 scale-125"
+                  onCheckedChange={(checked) => {
+                    const nextValue = Boolean(checked);
+                    if (isMobile) setLocalShowGroupFundSearchMobile(nextValue);
+                    else setLocalShowGroupFundSearchPc(nextValue);
+                  }}
+                  aria-label="显示分组内基金搜索"
+                />
+              </div>
             </div>
           </div>
 
