@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { storageStore } from '../stores';
 
-const ANNOUNCEMENT_KEY = 'hasClosedAnnouncement_v2.3.0';
+const ANNOUNCEMENT_KEY = 'hasClosedAnnouncement_v2.3.1';
 
 export default function Announcement() {
   const [isVisible, setIsVisible] = useState(false);
@@ -109,16 +109,10 @@ export default function Announcement() {
                 paddingRight: '4px'
               }}
             >
-              <p>v2.3.0 版本更新内容：</p>
-              <p>1. 新增自动切换数据源（限免）。</p>
-              <p>2. PC和移动表格模式新增数据源列。</p>
-              <p>3. 业绩走势展示新增累计净值。</p>
-              <p>4. 业绩走势和估值走势支持悬浮框。</p>
-              <p>5. PC表格模式移除基金标签列，改为在基金名称列中展示。</p>
-              <p>6. 部分基金支持自动获取推荐的基金标签。</p>
-              <p>7. 基金标签支持批量同步给其他基金。</p>
-              <p>8. 修复切换数据源弹框，今日最准逻辑判断问题。</p>
-              <p>9. 优化个性化设置弹框拖拽性能问题，并新增置顶操作。</p>
+              <p>v2.3.1 版本更新内容：</p>
+              <p>1. 分组支持以下拉形式展示（需在设置中开启）。</p>
+              <p>2. 修复 PC 端列宽拖拽问题。</p>
+              <p>3. 导入基金弹框允许选择是否导入推荐的基金标签。</p>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
               <button
