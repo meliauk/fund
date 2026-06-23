@@ -21,7 +21,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { toast as sonnerToast } from 'sonner';
 
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from '@/components/ui/empty';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Announcement from './components/Announcement';
 import EmptyStateCard from './components/EmptyStateCard';
 import FundCard from './components/FundCard';
@@ -106,7 +106,7 @@ import {
 
 import { dedupeByCode, normalizeCode, cleanCodeArray } from './lib/normalize';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { formatMoney } from '@/lib/utils';
+import { cn, formatMoney } from '@/lib/utils';
 
 export default function HomePage() {
   const {
@@ -214,6 +214,10 @@ export default function HomePage() {
     setDynamicStylePc,
     dynamicStyleMobile,
     setDynamicStyleMobile,
+    showGroupDropdownPc,
+    setShowGroupDropdownPc,
+    showGroupDropdownMobile,
+    setShowGroupDropdownMobile,
     isGroupSummarySticky,
     setIsGroupSummarySticky,
     syncFromCustomSettings
@@ -359,6 +363,8 @@ export default function HomePage() {
   const todayStr = formatDate();
 
   const isMobile = useIsMobile();
+  const showGroupDropdown = isMobile ? showGroupDropdownMobile : showGroupDropdownPc;
+  const isGroupDropdownTabActive = currentTab === 'fav' || groups.some((g) => g.id === currentTab);
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -3622,7 +3628,8 @@ export default function HomePage() {
     showGroupFundSearchOverride,
     isMobileOverride,
     dynamicStyleOverride,
-    containerWidthOverride
+    containerWidthOverride,
+    showGroupDropdownOverride
   ) => {
     e?.preventDefault?.();
     const seconds = secondsOverride ?? tempSeconds;
@@ -3655,6 +3662,14 @@ export default function HomePage() {
     if (targetIsMobile) setDynamicStyleMobile(nextDynamicStyle);
     else setDynamicStylePc(nextDynamicStyle);
 
+    const nextShowGroupDropdown = isBoolean(showGroupDropdownOverride)
+      ? showGroupDropdownOverride
+      : targetIsMobile
+        ? showGroupDropdownMobile
+        : showGroupDropdownPc;
+    if (targetIsMobile) setShowGroupDropdownMobile(nextShowGroupDropdown);
+    else setShowGroupDropdownPc(nextShowGroupDropdown);
+
     // 在移动端不裁剪也不修改 pcContainerWidth，直接保留原值
     let w = Number(containerWidthOverride ?? containerWidth) || 1200;
     if (!targetIsMobile) {
@@ -3670,7 +3685,8 @@ export default function HomePage() {
           ...parsed,
           showMarketIndexMobile: nextShowMarketIndex,
           showGroupFundSearchMobile: nextShowGroupFundSearch,
-          dynamicStyleMobile: nextDynamicStyle
+          dynamicStyleMobile: nextDynamicStyle,
+          showGroupDropdownMobile: nextShowGroupDropdown
         });
       } else {
         setCustomSettings({
@@ -3678,7 +3694,8 @@ export default function HomePage() {
           pcContainerWidth: w,
           showMarketIndexPc: nextShowMarketIndex,
           showGroupFundSearchPc: nextShowGroupFundSearch,
-          dynamicStylePc: nextDynamicStyle
+          dynamicStylePc: nextDynamicStyle,
+          showGroupDropdownPc: nextShowGroupDropdown
         });
       }
     } catch {}
@@ -4389,6 +4406,8 @@ export default function HomePage() {
     showGroupFundSearchMobile,
     dynamicStylePc,
     dynamicStyleMobile,
+    showGroupDropdownPc,
+    showGroupDropdownMobile,
     scanProgress: scanProgress ?? { stage: 'ocr', current: 0, total: 0 },
     scanImportProgress: scanImportProgress ?? { current: 0, total: 0, success: 0, failed: 0 },
     // Refs
@@ -4641,13 +4660,13 @@ export default function HomePage() {
                         position: 'relative',
                         flex: 1,
                         minWidth: 0,
-                        paddingLeft: !isMobile && hasTabOverflow ? 32 : 0,
-                        paddingRight: !isMobile && hasTabOverflow ? 32 : 0,
+                        paddingLeft: !showGroupDropdown && !isMobile && hasTabOverflow ? 32 : 0,
+                        paddingRight: !showGroupDropdown && !isMobile && hasTabOverflow ? 32 : 0,
                         transition: 'padding 0.2s ease'
                       }}
                     >
                       <AnimatePresence>
-                        {!isMobile && hasTabOverflow && (
+                        {!showGroupDropdown && !isMobile && hasTabOverflow && (
                           <>
                             <motion.button
                               initial={{ opacity: 0, scale: 0.8, y: '-50%', x: 0 }}
@@ -4681,8 +4700,8 @@ export default function HomePage() {
                       <div
                         className="tabs-scroll-area"
                         ref={scrollAreaRef}
-                        data-mask-left={canLeft}
-                        data-mask-right={canRight}
+                        data-mask-left={!showGroupDropdown && canLeft}
+                        data-mask-right={!showGroupDropdown && canRight}
                         onMouseDown={handleMouseDown}
                         onMouseLeave={handleMouseLeaveOrUp}
                         onMouseUp={handleMouseLeaveOrUp}
@@ -4718,32 +4737,76 @@ export default function HomePage() {
                             >
                               全部 ({funds.length})
                             </motion.button>
-                            <motion.button
-                              layout
-                              initial={{ opacity: 0, scale: 0.8 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              exit={{ opacity: 0, scale: 0.8 }}
-                              key="fav"
-                              className={`tab ${currentTab === 'fav' ? 'active' : ''}`}
-                              onClick={() => handleTabClick('fav')}
-                              transition={{ type: 'spring', stiffness: 500, damping: 30, mass: 1 }}
-                            >
-                              自选 ({favorites.size})
-                            </motion.button>
-                            {groups.map((g) => (
+                            {!showGroupDropdown && (
                               <motion.button
                                 layout
                                 initial={{ opacity: 0, scale: 0.8 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.8 }}
-                                key={g.id}
-                                className={`tab ${currentTab === g.id ? 'active' : ''}`}
-                                onClick={() => handleTabClick(g.id)}
+                                key="fav"
+                                className={`tab ${currentTab === 'fav' ? 'active' : ''}`}
+                                onClick={() => handleTabClick('fav')}
                                 transition={{ type: 'spring', stiffness: 500, damping: 30, mass: 1 }}
                               >
-                                {g.name} ({g.codes.length})
+                                自选 ({favorites.size})
                               </motion.button>
-                            ))}
+                            )}
+                            {!showGroupDropdown &&
+                              groups.map((g) => (
+                                <motion.button
+                                  layout
+                                  initial={{ opacity: 0, scale: 0.8 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  exit={{ opacity: 0, scale: 0.8 }}
+                                  key={g.id}
+                                  className={`tab ${currentTab === g.id ? 'active' : ''}`}
+                                  onClick={() => handleTabClick(g.id)}
+                                  transition={{ type: 'spring', stiffness: 500, damping: 30, mass: 1 }}
+                                >
+                                  {g.name} ({g.codes.length})
+                                </motion.button>
+                              ))}
+                            {showGroupDropdown && (
+                              <div
+                                key="group-dropdown"
+                                style={{ minWidth: isMobile ? 150 : 180, maxWidth: isMobile ? 210 : 260 }}
+                              >
+                                <Select
+                                  value={isGroupDropdownTabActive ? currentTab : ''}
+                                  onValueChange={(value) => handleTabClick(value)}
+                                >
+                                  <SelectTrigger
+                                    className={cn(
+                                      'h-4 py-0 text-xs shadow-none',
+                                      isGroupDropdownTabActive &&
+                                        'border-primary/70 text-primary ring-1 ring-primary/25'
+                                    )}
+                                    style={{
+                                      background: isGroupDropdownTabActive
+                                        ? 'color-mix(in srgb, var(--primary) 12%, var(--card-bg))'
+                                        : 'var(--card-bg)',
+                                      boxShadow: isGroupDropdownTabActive
+                                        ? '0 0 0 1px rgba(255, 255, 255, 0.05), 0 6px 18px rgba(34, 211, 238, 0.12)'
+                                        : undefined,
+                                      height: 32
+                                    }}
+                                    aria-label="选择分组"
+                                  >
+                                    <SelectValue placeholder="选择分组" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectGroup>
+                                      <SelectItem value="fav">自选 ({favorites.size})</SelectItem>
+                                      {groups.map((g) => (
+                                        <SelectItem key={g.id} value={g.id}>
+                                          {g.name} ({g.codes.length})
+                                        </SelectItem>
+                                      ))}
+                                    </SelectGroup>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
                           </AnimatePresence>
                           <Tooltip>
                             <TooltipTrigger asChild>

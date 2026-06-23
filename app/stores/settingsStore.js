@@ -13,6 +13,8 @@ export const useSettingsStore = create((set) => ({
   showGroupFundSearchMobile: true,
   dynamicStylePc: true,
   dynamicStyleMobile: true,
+  showGroupDropdownPc: false,
+  showGroupDropdownMobile: false,
   isGroupSummarySticky: false,
 
   setTempSeconds: (val) => set({ tempSeconds: isFunction(val) ? val(useSettingsStore.getState().tempSeconds) : val }),
@@ -36,6 +38,14 @@ export const useSettingsStore = create((set) => ({
     set({ dynamicStylePc: isFunction(val) ? val(useSettingsStore.getState().dynamicStylePc) : val }),
   setDynamicStyleMobile: (val) =>
     set({ dynamicStyleMobile: isFunction(val) ? val(useSettingsStore.getState().dynamicStyleMobile) : val }),
+  setShowGroupDropdownPc: (val) =>
+    set({
+      showGroupDropdownPc: isFunction(val) ? val(useSettingsStore.getState().showGroupDropdownPc) : val
+    }),
+  setShowGroupDropdownMobile: (val) =>
+    set({
+      showGroupDropdownMobile: isFunction(val) ? val(useSettingsStore.getState().showGroupDropdownMobile) : val
+    }),
   setIsGroupSummarySticky: (val) =>
     set({
       isGroupSummarySticky: isFunction(val) ? val(useSettingsStore.getState().isGroupSummarySticky) : val
@@ -68,6 +78,9 @@ export const useSettingsStore = create((set) => ({
         patch.showGroupFundSearchMobile = customSettings.showGroupFundSearchMobile;
       if (isBoolean(customSettings.dynamicStylePc)) patch.dynamicStylePc = customSettings.dynamicStylePc;
       if (isBoolean(customSettings.dynamicStyleMobile)) patch.dynamicStyleMobile = customSettings.dynamicStyleMobile;
+      if (isBoolean(customSettings.showGroupDropdownPc)) patch.showGroupDropdownPc = customSettings.showGroupDropdownPc;
+      if (isBoolean(customSettings.showGroupDropdownMobile))
+        patch.showGroupDropdownMobile = customSettings.showGroupDropdownMobile;
 
       if (Object.keys(patch).length > 0) {
         set(patch);

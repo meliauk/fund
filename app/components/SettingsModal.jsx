@@ -26,7 +26,9 @@ export default function SettingsModal({
   showGroupFundSearchPc = true,
   showGroupFundSearchMobile = true,
   dynamicStylePc = true,
-  dynamicStyleMobile = true
+  dynamicStyleMobile = true,
+  showGroupDropdownPc = false,
+  showGroupDropdownMobile = false
 }) {
   const isMobile = useIsMobile();
   const [sliderDragging, setSliderDragging] = useState(false);
@@ -39,6 +41,8 @@ export default function SettingsModal({
   const [localShowGroupFundSearchMobile, setLocalShowGroupFundSearchMobile] = useState(showGroupFundSearchMobile);
   const [localDynamicStylePc, setLocalDynamicStylePc] = useState(dynamicStylePc);
   const [localDynamicStyleMobile, setLocalDynamicStyleMobile] = useState(dynamicStyleMobile);
+  const [localShowGroupDropdownPc, setLocalShowGroupDropdownPc] = useState(showGroupDropdownPc);
+  const [localShowGroupDropdownMobile, setLocalShowGroupDropdownMobile] = useState(showGroupDropdownMobile);
   const [localContainerWidth, setLocalContainerWidth] = useState(containerWidth);
   const pageWidthTrackRef = useRef(null);
   const [viewWidth, setViewWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
@@ -108,6 +112,14 @@ export default function SettingsModal({
   useEffect(() => {
     setLocalDynamicStyleMobile(dynamicStyleMobile);
   }, [dynamicStyleMobile]);
+
+  useEffect(() => {
+    setLocalShowGroupDropdownPc(showGroupDropdownPc);
+  }, [showGroupDropdownPc]);
+
+  useEffect(() => {
+    setLocalShowGroupDropdownMobile(showGroupDropdownMobile);
+  }, [showGroupDropdownMobile]);
 
   useEffect(() => {
     setLocalContainerWidth(containerWidth);
@@ -270,21 +282,41 @@ export default function SettingsModal({
             </div>
           </div>
 
-          <div className="form-group" style={{ marginBottom: 16 }}>
-            <div className="muted" style={{ marginBottom: 8, fontSize: '0.8rem' }}>
-              减少动态样式效果
+          <div className="row" style={{ gap: 16, marginBottom: 16 }}>
+            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+              <div className="muted" style={{ marginBottom: 8, fontSize: '0.8rem' }}>
+                减少动态样式效果
+              </div>
+              <div className="row" style={{ justifyContent: 'flex-start', alignItems: 'center' }}>
+                <Switch
+                  checked={isMobile ? !localDynamicStyleMobile : !localDynamicStylePc}
+                  className="ml-2 scale-125"
+                  onCheckedChange={(checked) => {
+                    const nextValue = !checked;
+                    if (isMobile) setLocalDynamicStyleMobile(nextValue);
+                    else setLocalDynamicStylePc(nextValue);
+                  }}
+                  aria-label="减少动态样式效果"
+                />
+              </div>
             </div>
-            <div className="row" style={{ justifyContent: 'flex-start', alignItems: 'center' }}>
-              <Switch
-                checked={isMobile ? !localDynamicStyleMobile : !localDynamicStylePc}
-                className="ml-2 scale-125"
-                onCheckedChange={(checked) => {
-                  const nextValue = !checked;
-                  if (isMobile) setLocalDynamicStyleMobile(nextValue);
-                  else setLocalDynamicStylePc(nextValue);
-                }}
-                aria-label="减少动态样式效果"
-              />
+
+            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+              <div className="muted" style={{ marginBottom: 8, fontSize: '0.8rem' }}>
+                下拉形式展示分组
+              </div>
+              <div className="row" style={{ justifyContent: 'flex-start', alignItems: 'center' }}>
+                <Switch
+                  checked={isMobile ? localShowGroupDropdownMobile : localShowGroupDropdownPc}
+                  className="ml-2 scale-125"
+                  onCheckedChange={(checked) => {
+                    const nextValue = Boolean(checked);
+                    if (isMobile) setLocalShowGroupDropdownMobile(nextValue);
+                    else setLocalShowGroupDropdownPc(nextValue);
+                  }}
+                  aria-label="下拉形式展示分组"
+                />
+              </div>
             </div>
           </div>
           <div className="form-group" style={{ marginBottom: 16 }}>
@@ -329,7 +361,8 @@ export default function SettingsModal({
                   isMobile ? localShowGroupFundSearchMobile : localShowGroupFundSearchPc,
                   isMobile,
                   isMobile ? localDynamicStyleMobile : localDynamicStylePc,
-                  localContainerWidth
+                  localContainerWidth,
+                  isMobile ? localShowGroupDropdownMobile : localShowGroupDropdownPc
                 )
               }
               disabled={localSeconds < 30}
