@@ -184,11 +184,9 @@ export default function GroupSummary({
     const style = {};
     if (isSticky) {
       style.top = `calc(${stickyTop}px + var(--market-index-height, 0px) + 14px)`;
-    } else if (!shouldShowMarketIndex) {
-      style.marginTop = navbarHeight;
     }
     return style;
-  }, [isSticky, stickyTop, shouldShowMarketIndex, navbarHeight]);
+  }, [isSticky, stickyTop]);
 
   if (!summary.hasHolding) return null;
 

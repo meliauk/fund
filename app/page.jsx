@@ -4644,7 +4644,7 @@ export default function HomePage() {
                   className="filter-bar"
                   style={{
                     top: `calc(${navbarHeight}px + var(--market-index-height, 0px))`,
-                    marginTop: 0,
+                    marginTop: !shouldShowMarketIndex ? navbarHeight : 0,
                     marginBottom: 8,
                     display: 'flex',
                     justifyContent: 'space-between',
