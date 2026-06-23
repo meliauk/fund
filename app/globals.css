@@ -18,7 +18,7 @@ html {
   font-size: 16px;
 }
 
-@media (max-width: 640px), (pointer: coarse) {
+@media (max-width: 640px) {
   html {
     font-size: clamp(13px, 3.84vw, 16px);
   }
@@ -491,7 +491,7 @@ body::before {
     0 8px 10px -6px rgba(0, 0, 0, 0.06);
 }
 
-@media (max-width: 640px), (pointer: coarse) {
+@media (max-width: 640px) {
   [data-theme='light'] .filter-bar {
     background: rgba(255, 255, 255, 0.95);
     border-bottom-color: var(--border);
@@ -806,7 +806,7 @@ body::before {
 }
 
 /* Mobile Search Logic */
-@media (max-width: 640px), (pointer: coarse) {
+@media (max-width: 640px) {
   /* Default: Search hidden, Trigger visible */
   .navbar-add-fund {
     display: flex;
@@ -904,7 +904,7 @@ body::before {
   /*padding-top: 100px;*/
 }
 
-@media (max-width: 640px), (pointer: coarse) {
+@media (max-width: 640px) {
   .content {
     padding-top: 140px;
     overflow-x: clip;
@@ -1062,7 +1062,7 @@ input[type='number'] {
   font-size: 12px;
 }
 
-@media (max-width: 640px), (pointer: coarse) {
+@media (max-width: 640px) {
   .input {
     font-size: 16px;
     /* 防止 iOS 在输入时自动放大 */
@@ -1155,7 +1155,7 @@ input[type='number'] {
   gap: 8px;
 }
 
-@media (max-width: 640px), (pointer: coarse) {
+@media (max-width: 640px) {
   .list {
     grid-template-columns: 1fr;
   }
@@ -2105,7 +2105,7 @@ html::-webkit-scrollbar-thumb:active,
   margin-bottom: 16px;
 }
 
-@media (max-width: 640px), (pointer: coarse) {
+@media (max-width: 640px) {
   .filter-bar {
     position: sticky;
     z-index: 40;
@@ -2145,7 +2145,7 @@ html::-webkit-scrollbar-thumb:active,
 }
 
 /* 禁止移动端输入框自动缩放 */
-@media (max-width: 640px), (pointer: coarse) {
+@media (max-width: 640px) {
   .input.no-zoom {
     font-size: 16px !important;
   }
@@ -2358,7 +2358,7 @@ html::-webkit-scrollbar-thumb:active,
   opacity: var(--my-earnings-illu-opacity);
 }
 
-@media (max-width: 640px), (pointer: coarse) {
+@media (max-width: 640px) {
   .my-earnings-rank-card {
     min-height: 190px;
   }
@@ -2726,7 +2726,7 @@ html::-webkit-scrollbar-thumb:active,
 }
 
 /* 移动端：首页底部留白（悬浮式底栏 + 安全区） */
-@media (max-width: 640px), (pointer: coarse) {
+@media (max-width: 640px) {
   .content-with-mobile-tabbar {
     padding-bottom: calc(78px + env(safe-area-inset-bottom, 0px));
   }
@@ -4477,7 +4477,7 @@ html::-webkit-scrollbar-thumb:active,
 }
 
 /* ========== 移动端响应式 ========== */
-@media (max-width: 640px), (pointer: coarse) {
+@media (max-width: 640px) {
   .user-menu-header {
     padding: 16px 8px;
   }
@@ -4831,7 +4831,7 @@ html::-webkit-scrollbar-thumb:active,
   color: inherit;
 }
 
-@media (max-width: 640px), (pointer: coarse) {
+@media (max-width: 640px) {
   .pc-side-nav-container {
     display: none;
   }
@@ -5159,7 +5159,7 @@ html::-webkit-scrollbar-thumb:active,
   display: none !important;
 }
 
-@media (max-width: 640px), (pointer: coarse) {
+@media (max-width: 640px) {
   .trend-tooltip-desktop {
     display: none !important;
   }

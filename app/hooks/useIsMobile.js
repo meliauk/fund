@@ -5,7 +5,7 @@ function subscribe(callback) {
   // 只在浏览器环境下执行
   if (typeof window === 'undefined') return () => {};
 
-  const mediaQuery = window.matchMedia('(max-width: 640px), (pointer: coarse)');
+  const mediaQuery = window.matchMedia('(max-width: 640px)');
 
   // 兼容旧版 Safari 的 listener 写法
   if (mediaQuery.addEventListener) {
@@ -21,7 +21,7 @@ function subscribe(callback) {
 // 获取当前快照
 function getSnapshot() {
   if (typeof window === 'undefined') return false;
-  return window.matchMedia('(max-width: 640px), (pointer: coarse)').matches;
+  return window.matchMedia('(max-width: 640px)').matches;
 }
 
 // 服务端渲染时的默认快照
