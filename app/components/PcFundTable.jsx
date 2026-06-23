@@ -12,7 +12,7 @@ import {
   useState,
   memo
 } from 'react';
-import { isArray, isFunction, isObject, isString, throttle } from 'lodash';
+import { isArray, isFunction, isObject, isString, throttle, debounce } from 'lodash';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useModalStore } from '../stores';
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
@@ -905,7 +905,7 @@ const PcFundTable = memo(function PcFundTable({
     });
     return allVisible;
   })();
-  const columnSizing = (() => {
+  const columnSizing = useMemo(() => {
     const s = currentGroupPc?.pcTableColumns;
     if (s && isObject(s)) {
       const out = Object.fromEntries(Object.entries(s).filter(([, v]) => Number.isFinite(v)));
@@ -916,7 +916,7 @@ const PcFundTable = memo(function PcFundTable({
       return out;
     }
     return {};
-  })();
+  }, [currentGroupPc?.pcTableColumns]);
 
   const persistPcGroupConfig = (updates) => {
     if (typeof window === 'undefined') return;
@@ -983,11 +983,35 @@ const PcFundTable = memo(function PcFundTable({
     const next = isFunction(nextOrUpdater) ? nextOrUpdater(columnVisibility) : nextOrUpdater;
     persistPcGroupConfig({ pcTableColumnVisibility: next });
   };
+
+  const [localColumnSizing, setLocalColumnSizing] = useState(columnSizing);
+
+  useEffect(() => {
+    setLocalColumnSizing(columnSizing);
+  }, [columnSizing]);
+
+  const persistPcGroupConfigRef = useRef(persistPcGroupConfig);
+  persistPcGroupConfigRef.current = persistPcGroupConfig;
+
+  const debouncedPersistColumnSizing = useMemo(
+    () => debounce((sizes) => persistPcGroupConfigRef.current({ pcTableColumns: sizes }), 300),
+    []
+  );
+
+  useEffect(() => {
+    return () => debouncedPersistColumnSizing.cancel();
+  }, [debouncedPersistColumnSizing]);
+
   const setColumnSizing = (nextOrUpdater) => {
-    const next = isFunction(nextOrUpdater) ? nextOrUpdater(columnSizing) : nextOrUpdater;
-    const { actions, ...rest } = next || {};
-    persistPcGroupConfig({ pcTableColumns: rest || {} });
+    setLocalColumnSizing((prev) => {
+      const next = isFunction(nextOrUpdater) ? nextOrUpdater(prev) : nextOrUpdater;
+      const { actions, ...rest } = next || {};
+      const newSizes = rest || {};
+      debouncedPersistColumnSizing(newSizes);
+      return newSizes;
+    });
   };
+
   const [settingModalOpen, setSettingModalOpen] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const handleResetSizing = () => {
@@ -2549,7 +2573,7 @@ const PcFundTable = memo(function PcFundTable({
       });
     },
     state: {
-      columnSizing,
+      columnSizing: localColumnSizing,
       columnOrder,
       columnVisibility,
       columnPinning: {
@@ -2616,7 +2640,7 @@ const PcFundTable = memo(function PcFundTable({
     const isPinned = column.getIsPinned();
     const isNameColumn = column.id === 'fundName' || column.columnDef?.accessorKey === 'fundName';
     const style = {
-      width: `${column.getSize()}px`
+      width: `var(--col-${column.id}, ${column.getSize()}px)`
     };
     if (!isPinned) {
       return {
@@ -2631,8 +2655,8 @@ const PcFundTable = memo(function PcFundTable({
     return {
       ...style,
       position: 'sticky',
-      left: isLeft ? `${column.getStart('left')}px` : undefined,
-      right: isRight ? `${column.getAfter('right')}px` : undefined,
+      left: isLeft ? `var(--col-${column.id}-start, ${column.getStart('left')}px)` : undefined,
+      right: isRight ? `var(--col-${column.id}-after, ${column.getAfter('right')}px)` : undefined,
       zIndex: isHeader ? 11 : 10,
       backgroundColor: isHeader ? 'var(--table-pinned-header-bg)' : 'var(--row-bg, var(--bg))',
       boxShadow: 'none',
@@ -2748,10 +2772,20 @@ const PcFundTable = memo(function PcFundTable({
 
   const totalHeaderWidth = headerGroup?.headers?.reduce((acc, h) => acc + h.column.getSize(), 0) ?? 0;
 
+  const tableCssVariables = useMemo(() => {
+    const vars = {};
+    table.getAllLeafColumns().forEach((column) => {
+      vars[`--col-${column.id}`] = `${column.getSize()}px`;
+      vars[`--col-${column.id}-start`] = `${column.getStart('left')}px`;
+      vars[`--col-${column.id}-after`] = `${column.getAfter('right')}px`;
+    });
+    return vars;
+  }, [table.getState().columnSizing, table.getState().columnOrder, table.getState().columnPinning]);
+
   return (
     <EditModeContext.Provider value={{ isEditMode, selectedCodes, toggleSelected }}>
       <>
-        <div className="pc-fund-table" ref={tableContainerRef}>
+        <div className="pc-fund-table" ref={tableContainerRef} style={tableCssVariables}>
           <style>{`
         .table-row-scroll {
           --row-bg: var(--bg);
@@ -2832,7 +2866,8 @@ const PcFundTable = memo(function PcFundTable({
           transition: opacity 0.2s, background-color 0.2s, box-shadow 0.2s;
         }
 
-        .resizer:hover::after {
+        .resizer:hover::after,
+        .resizer.isResizing::after {
           opacity: 1;
           background: var(--primary);
           box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.2);
@@ -3029,6 +3064,7 @@ const PcFundTable = memo(function PcFundTable({
                 className="pc-fund-table pc-fund-table-portal-header"
                 ref={portalHeaderRef}
                 style={{
+                  ...tableCssVariables,
                   position: 'fixed',
                   top: effectiveStickyTop,
                   left: portalHorizontal.left,
