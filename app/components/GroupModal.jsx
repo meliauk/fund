@@ -1,14 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel, FieldContent } from '@/components/ui/field';
 import { PlusIcon, CloseIcon } from './Icons';
 import { cn } from '@/lib/utils';
 
+const MAX_GROUP_NAME_LENGTH = 8;
+const truncateGroupName = (value) => [...(value || '')].slice(0, MAX_GROUP_NAME_LENGTH).join('');
+
 export default function GroupModal({ onClose, onConfirm }) {
   const [name, setName] = useState('');
+  const isComposingRef = useRef(false);
+
+  const confirmName = () => {
+    const nextName = truncateGroupName(name).trim();
+    if (!nextName) return;
+    onConfirm(nextName);
+  };
 
   return (
     <Dialog
@@ -33,7 +43,7 @@ export default function GroupModal({ onClose, onConfirm }) {
 
           <Field className="mb-5">
             <FieldLabel htmlFor="group-modal-name" className="text-sm text-[var(--muted-foreground)] mb-2 block">
-              分组名称（最多 8 个字）
+              分组名称（最多 {MAX_GROUP_NAME_LENGTH} 个字）
             </FieldLabel>
             <FieldContent>
               <input
@@ -49,10 +59,21 @@ export default function GroupModal({ onClose, onConfirm }) {
                 value={name}
                 onChange={(e) => {
                   const v = e.target.value || '';
-                  setName(v.slice(0, 8));
+                  setName(isComposingRef.current || e.nativeEvent.isComposing ? v : truncateGroupName(v));
+                }}
+                onCompositionStart={() => {
+                  isComposingRef.current = true;
+                }}
+                onCompositionEnd={(e) => {
+                  isComposingRef.current = false;
+                  setName(truncateGroupName(e.currentTarget.value));
+                }}
+                onBlur={(e) => {
+                  if (!isComposingRef.current) setName(truncateGroupName(e.currentTarget.value));
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && name.trim()) onConfirm(name.trim());
+                  if (e.nativeEvent.isComposing) return;
+                  if (e.key === 'Enter') confirmName();
                 }}
               />
             </FieldContent>
@@ -66,11 +87,7 @@ export default function GroupModal({ onClose, onConfirm }) {
             >
               取消
             </Button>
-            <Button
-              className="flex-1 h-11 rounded-xl cursor-pointer"
-              onClick={() => name.trim() && onConfirm(name.trim())}
-              disabled={!name.trim()}
-            >
+            <Button className="flex-1 h-11 rounded-xl cursor-pointer" onClick={confirmName} disabled={!name.trim()}>
               确定
             </Button>
           </div>

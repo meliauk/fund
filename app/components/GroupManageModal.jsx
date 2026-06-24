@@ -1,14 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { AnimatePresence, Reorder, useDragControls } from 'framer-motion';
 import { Dialog, DialogContent, DialogTitle } from '../../components/ui/dialog';
 import ConfirmModal from './ConfirmModal';
 import { DragIcon, PlusIcon, SettingsIcon, TrashIcon } from './Icons';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
+const MAX_GROUP_NAME_LENGTH = 8;
+const truncateGroupName = (value) => [...(value || '')].slice(0, MAX_GROUP_NAME_LENGTH).join('');
+
 function GroupManageReorderItem({ item, onRename, onDeleteClick }) {
   const dragControls = useDragControls();
+  const isComposingRef = useRef(false);
 
   return (
     <Reorder.Item
@@ -50,7 +54,17 @@ function GroupManageReorderItem({ item, onRename, onDeleteClick }) {
       <input
         className={`input group-rename-input ${!item.name.trim() ? 'error' : ''}`}
         value={item.name}
-        onChange={(e) => onRename(item.id, e.target.value)}
+        onChange={(e) => onRename(item.id, e.target.value, e.nativeEvent.isComposing || isComposingRef.current)}
+        onCompositionStart={() => {
+          isComposingRef.current = true;
+        }}
+        onCompositionEnd={(e) => {
+          isComposingRef.current = false;
+          onRename(item.id, e.currentTarget.value);
+        }}
+        onBlur={(e) => {
+          if (!isComposingRef.current) onRename(item.id, e.currentTarget.value);
+        }}
         placeholder="请输入分组名称..."
         style={{
           flex: 1,
@@ -85,9 +99,9 @@ export default function GroupManageModal({ groups, onClose, onSave }) {
     setItems(newOrder);
   };
 
-  const handleRename = (id, newName) => {
-    const truncatedName = (newName || '').slice(0, 8);
-    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, name: truncatedName } : item)));
+  const handleRename = (id, newName, isComposing = false) => {
+    const nextName = isComposing ? newName || '' : truncateGroupName(newName);
+    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, name: nextName } : item)));
   };
 
   const handleDeleteClick = (id, name) => {
@@ -121,7 +135,7 @@ export default function GroupManageModal({ groups, onClose, onSave }) {
   const handleConfirm = () => {
     const hasEmpty = items.some((it) => !it.name.trim());
     if (hasEmpty) return;
-    onSave(items);
+    onSave(items.map((item) => ({ ...item, name: truncateGroupName(item.name).trim() })));
     onClose();
   };
 

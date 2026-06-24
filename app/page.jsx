@@ -4769,7 +4769,7 @@ export default function HomePage() {
                             {showGroupDropdown && (
                               <div
                                 key="group-dropdown"
-                                style={{ minWidth: isMobile ? 150 : 180, maxWidth: isMobile ? 210 : 260 }}
+                                style={{ minWidth: isMobile ? 170 : 210, maxWidth: isMobile ? 230 : 300 }}
                               >
                                 <Select
                                   value={isGroupDropdownTabActive ? currentTab : ''}
@@ -4794,7 +4794,15 @@ export default function HomePage() {
                                   >
                                     <SelectValue placeholder="选择分组" />
                                   </SelectTrigger>
-                                  <SelectContent>
+                                  <SelectContent
+                                    position="popper"
+                                    align="start"
+                                    className="max-h-none"
+                                    style={{
+                                      width: isMobile ? 230 : 300,
+                                      maxHeight: 'none'
+                                    }}
+                                  >
                                     <SelectGroup>
                                       <SelectItem value="fav">自选 ({favorites.size})</SelectItem>
                                       {groups.map((g) => (
